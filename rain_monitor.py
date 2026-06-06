@@ -23,13 +23,24 @@ def save_json(filepath, data):
     with open(filepath, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-def send_line_notify(message, token):
-    url = "https://notify-api.line.me/api/notify"
-    headers = {"Authorization": f"Bearer {token}"}
-    data = {"message": f"\n{message}"}
-    response = requests.post(url, headers=headers, data=data)
+def send_line_message(message, token, group_id):
+    url = "https://api.line.me/v2/bot/message/push"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "to": group_id,
+        "messages": [
+            {
+                "type": "text",
+                "text": message
+            }
+        ]
+    }
+    response = requests.post(url, headers=headers, json=data)
     response.raise_for_status()
-    print("LINE Notify 發送成功。")
+    print("LINE Messaging API 發送成功。")
 
 def send_error_email(error_msg, config):
     sender_email = os.environ.get("GMAIL_USER")
@@ -99,10 +110,11 @@ def main():
             print("目前非營業時間 (08:00-19:00)，不執行檢查。")
             return
 
-        # 檢查 LINE Token 是否已設定
-        line_token = os.environ.get("LINE_NOTIFY_TOKEN")
-        if not line_token:
-            print("警告：LINE_NOTIFY_TOKEN 未設定，若觸發將無法發送 LINE 訊息。如果您是在測試環境，可忽略此警告。")
+        # 檢查 LINE Token 與 Group ID 是否已設定
+        line_token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
+        line_group = os.environ.get("LINE_GROUP_ID")
+        if not line_token or not line_group:
+            print("警告：LINE_CHANNEL_ACCESS_TOKEN 或 LINE_GROUP_ID 未設定，若觸發將無法發送 LINE 訊息。")
             
         # 3. 獲取台南市安南區天氣
         lat = config['location']['latitude']
@@ -120,8 +132,8 @@ def main():
             if not state['is_covered']:
                 # 如果原本沒蓋，現在下雨了 -> 觸發蓋帆布通知
                 print("👉 偵測到開始下雨！準備發送【蓋上帆布】通知。")
-                if line_token:
-                    send_line_notify(config['messages']['cover'], line_token)
+                if line_token and line_group:
+                    send_line_message(config['messages']['cover'], line_token, line_group)
                 state['is_covered'] = True
         else:
             if state['is_covered']:
@@ -132,15 +144,15 @@ def main():
                     print(f"目前無雨。距離最後一次下雨已過: {diff_minutes:.1f} 分鐘。")
                     if diff_minutes >= 30:
                         print("👉 停雨已達 30 分鐘！準備發送【不蓋帆布】通知。")
-                        if line_token:
-                            send_line_notify(config['messages']['uncover'], line_token)
+                        if line_token and line_group:
+                            send_line_message(config['messages']['uncover'], line_token, line_group)
                         state['is_covered'] = False
                         state['last_rain_time'] = None # 重置下雨時間
                 else:
                     # 異常狀態防呆：有蓋帆布卻沒有記錄時間，直接解除
                     print("異常：帆布為蓋上狀態，但無下雨時間紀錄。直接重置狀態。")
-                    if line_token:
-                        send_line_notify(config['messages']['uncover'], line_token)
+                    if line_token and line_group:
+                        send_line_message(config['messages']['uncover'], line_token, line_group)
                     state['is_covered'] = False
                     
         # 寫入狀態 (若被改變)
