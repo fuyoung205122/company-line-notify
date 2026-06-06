@@ -1,0 +1,40 @@
+name: Rain Monitor Cron Job
+
+on:
+  schedule:
+    # GitHub Actions 使用 UTC 時間。每 5 分鐘執行一次。
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # 允許在 GitHub 網頁上手動點擊執行測試
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. 取得最新程式碼與狀態
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 2. 設定 Python 環境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: 3. 安裝必要套件
+        run: pip install -r requirements.txt
+
+      - name: 4. 執行降雨監控程式
+        env:
+          # 將您在 GitHub Secrets 裡設定的密碼傳給 Python
+          LINE_NOTIFY_TOKEN: ${{ secrets.LINE_NOTIFY_TOKEN }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python rain_monitor.py
+
+      - name: 5. 儲存狀態檔 (若有更新)
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add state.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update state.json by bot" && git push)
