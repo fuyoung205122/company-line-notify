@@ -15,31 +15,57 @@ class TestRainMonitor(unittest.TestCase):
 
     @patch('rain_monitor.requests.get')
     def test_get_weather_rain(self, mock_get):
-        # 模擬天氣 API 回傳下雨數據 (1.5mm)
+        # 模擬中央氣象署 API 回傳下雨數據 (1.5mm)
         mock_resp = MagicMock()
         mock_resp.json.return_value = {
-            "current": {
-                "precipitation": 1.5
+            "records": {
+                "Station": [{
+                    "StationName": "安南",
+                    "ObsTime": {"DateTime": "2026-06-08T08:00:00+08:00"},
+                    "RainfallElement": {
+                        "Past10Min": {"Precipitation": 1.5}
+                    }
+                }]
             }
         }
         mock_get.return_value = mock_resp
         
-        is_raining = rain_monitor.get_weather(23.0485, 120.186)
+        is_raining, obs_time, precip, source = rain_monitor.get_weather("C2O950", "test-key", 23.0485, 120.186)
         self.assertTrue(is_raining)
+        self.assertEqual(precip, "1.5 mm")
+        self.assertIn("中央氣象署", source)
 
     @patch('rain_monitor.requests.get')
     def test_get_weather_no_rain(self, mock_get):
-        # 模擬天氣 API 回傳無雨數據 (0.0mm)
+        # 模擬中央氣象署 API 回傳無雨數據 (0.0mm)
         mock_resp = MagicMock()
         mock_resp.json.return_value = {
-            "current": {
-                "precipitation": 0.0
+            "records": {
+                "Station": [{
+                    "StationName": "安南",
+                    "ObsTime": {"DateTime": "2026-06-08T08:00:00+08:00"},
+                    "RainfallElement": {
+                        "Past10Min": {"Precipitation": 0.0}
+                    }
+                }]
             }
         }
         mock_get.return_value = mock_resp
         
-        is_raining = rain_monitor.get_weather(23.0485, 120.186)
+        is_raining, obs_time, precip, source = rain_monitor.get_weather("C2O950", "test-key", 23.0485, 120.186)
         self.assertFalse(is_raining)
+        self.assertEqual(precip, "0.0 mm")
+        self.assertIn("中央氣象署", source)
+
+    def test_get_line_group_ids(self):
+        group_ids = rain_monitor.get_line_group_ids("group-a, group-b,, ")
+        self.assertEqual(group_ids, ["group-a", "group-b"])
+
+    @patch('rain_monitor.send_line_message')
+    def test_send_to_all_line_groups_reports_failure(self, mock_send):
+        mock_send.side_effect = [True, False]
+        result = rain_monitor.send_to_all_line_groups("test", "token", "group-a,group-b")
+        self.assertFalse(result)
 
 if __name__ == '__main__':
     unittest.main()

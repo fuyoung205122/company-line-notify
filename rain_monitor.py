@@ -42,8 +42,24 @@ def send_line_message(message, token, group_id):
         response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()
         print(f"LINE Messaging API 發送至 {group_id} 成功。")
+        return True
     except Exception as e:
         print(f"LINE Messaging API 發送至 {group_id} 失敗: {e}")
+        return False
+
+def get_line_group_ids(line_group):
+    if not line_group:
+        return []
+    return [gid.strip() for gid in line_group.split(',') if gid.strip()]
+
+def send_to_all_line_groups(message, token, line_group):
+    group_ids = get_line_group_ids(line_group)
+    print(f"LINE 目標群組數量: {len(group_ids)}")
+    if not token or not group_ids:
+        print("警告：LINE token 或群組 ID 未設定，無法發送 LINE 訊息。")
+        return False
+    results = [send_line_message(message, token, gid) for gid in group_ids]
+    return all(results)
 
 def send_error_email(error_msg, config):
     sender_email = os.environ.get("GMAIL_USER")
@@ -218,6 +234,24 @@ def main():
         today_str = now.strftime('%Y-%m-%d')
         
         print(f"--- 系統執行時間: {now.strftime('%Y-%m-%d %H:%M:%S')} ---")
+        import sys
+        force_run = "--force" in sys.argv
+        test_line = "--test-line" in sys.argv
+
+        line_token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
+        line_group = os.environ.get("LINE_GROUP_ID")
+
+        if test_line:
+            print("偵測到 --test-line 參數，執行 LINE 測試發送。")
+            test_msg = (
+                f"✅ LINE 測試通知\n"
+                f"系統時間：{now.strftime('%Y-%m-%d %H:%M:%S')}\n"
+                f"這是一則測試訊息，用來確認群組通知設定正常。"
+            )
+            sent = send_to_all_line_groups(test_msg, line_token, line_group)
+            if not sent:
+                raise ValueError("LINE 測試發送失敗：請檢查 LINE token、群組 ID、官方帳號是否已加入群組。")
+            return
         
         # 1. 每日 23:00 重置機制
         # 如果時間是 23:00 之後，且今天還沒執行過重置，就立刻重置。
@@ -231,8 +265,6 @@ def main():
             return
             
         # 2. 營業時間檢查 (週一至週五非國定假日 08:00-19:00)
-        import sys
-        force_run = "--force" in sys.argv
         if force_run:
             print("偵測到 --force 參數，跳過時間、週末及國定假日限制，強制執行天氣檢查。")
 
@@ -272,12 +304,12 @@ def main():
             return
 
         # 檢查環境變數是否設定
-        line_token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
-        line_group = os.environ.get("LINE_GROUP_ID")
         cwa_api_key = os.environ.get("CWA_API_KEY")
         
         if not line_token or not line_group:
             print("警告：LINE_CHANNEL_ACCESS_TOKEN 或 LINE_GROUP_ID 未設定，若觸發將無法發送 LINE 訊息。")
+        else:
+            print(f"LINE 設定已讀取，目標群組數量: {len(get_line_group_ids(line_group))}")
         if not cwa_api_key:
             raise ValueError("環境變數 CWA_API_KEY 未設定，無法查詢中央氣象署降雨資料。")
             
@@ -310,12 +342,8 @@ def main():
             if not state['is_covered']:
                 # 如果原本沒蓋，現在下雨了 -> 觸發蓋帆布通知
                 print("👉 偵測到開始下雨！準備發送【蓋上帆布】通知。")
-                if line_token and line_group:
-                    full_msg = info_header + config['messages']['cover']
-                    for gid in line_group.split(','):
-                        gid = gid.strip()
-                        if gid:
-                            send_line_message(full_msg, line_token, gid)
+                full_msg = info_header + config['messages']['cover']
+                send_to_all_line_groups(full_msg, line_token, line_group)
                 state['is_covered'] = True
         else:
             if state['is_covered']:
@@ -326,23 +354,15 @@ def main():
                     print(f"目前無雨。距離最後一次下雨已過: {diff_minutes:.1f} 分鐘。")
                     if diff_minutes >= 30:
                         print("👉 停雨已達 30 分鐘！準備發送【不蓋帆布】通知。")
-                        if line_token and line_group:
-                            full_msg = info_header + config['messages']['uncover']
-                            for gid in line_group.split(','):
-                                gid = gid.strip()
-                                if gid:
-                                    send_line_message(full_msg, line_token, gid)
+                        full_msg = info_header + config['messages']['uncover']
+                        send_to_all_line_groups(full_msg, line_token, line_group)
                         state['is_covered'] = False
                         state['last_rain_time'] = None # 重置下雨時間
                 else:
                     # 異常狀態防呆：有蓋帆布卻沒有記錄時間，直接解除
                     print("異常：帆布為蓋上狀態，但無下雨時間紀錄。直接重置狀態。")
-                    if line_token and line_group:
-                        full_msg = info_header + config['messages']['uncover']
-                        for gid in line_group.split(','):
-                            gid = gid.strip()
-                            if gid:
-                                send_line_message(full_msg, line_token, gid)
+                    full_msg = info_header + config['messages']['uncover']
+                    send_to_all_line_groups(full_msg, line_token, line_group)
                     state['is_covered'] = False
                     
         # 寫入狀態 (若被改變)
