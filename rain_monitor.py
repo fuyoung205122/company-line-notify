@@ -110,10 +110,10 @@ def check_quota_and_notify(line_token, config, state, current_month_str):
             data = resp.json()
             total_usage = data.get('totalUsage', 0)
             remaining = 200 - total_usage
-            if True: # remaining < 10:
-                print(f"【測試】觸發發送額度警告信件。")
+            if remaining < 10:
+                print(f"剩餘訊息少於 10 則 (剩餘 {remaining} 則)，發送警告信件。")
                 send_quota_warning_email(remaining, config)
-                # state['quota_warning_sent_month'] = current_month_str # 測試不寫入狀態
+                state['quota_warning_sent_month'] = current_month_str
     except Exception as e:
         print(f"檢查 LINE 額度失敗: {e}")
 
