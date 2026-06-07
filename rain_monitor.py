@@ -38,9 +38,12 @@ def send_line_message(message, token, group_id):
             }
         ]
     }
-    response = requests.post(url, headers=headers, json=data)
-    response.raise_for_status()
-    print("LINE Messaging API 發送成功。")
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        print(f"LINE Messaging API 發送至 {group_id} 成功。")
+    except Exception as e:
+        print(f"LINE Messaging API 發送至 {group_id} 失敗: {e}")
 
 def send_error_email(error_msg, config):
     sender_email = os.environ.get("GMAIL_USER")
