@@ -133,7 +133,10 @@ def main():
                 # 如果原本沒蓋，現在下雨了 -> 觸發蓋帆布通知
                 print("👉 偵測到開始下雨！準備發送【蓋上帆布】通知。")
                 if line_token and line_group:
-                    send_line_message(config['messages']['cover'], line_token, line_group)
+                    for gid in line_group.split(','):
+                        gid = gid.strip()
+                        if gid:
+                            send_line_message(config['messages']['cover'], line_token, gid)
                 state['is_covered'] = True
         else:
             if state['is_covered']:
@@ -145,14 +148,20 @@ def main():
                     if diff_minutes >= 30:
                         print("👉 停雨已達 30 分鐘！準備發送【不蓋帆布】通知。")
                         if line_token and line_group:
-                            send_line_message(config['messages']['uncover'], line_token, line_group)
+                            for gid in line_group.split(','):
+                                gid = gid.strip()
+                                if gid:
+                                    send_line_message(config['messages']['uncover'], line_token, gid)
                         state['is_covered'] = False
                         state['last_rain_time'] = None # 重置下雨時間
                 else:
                     # 異常狀態防呆：有蓋帆布卻沒有記錄時間，直接解除
                     print("異常：帆布為蓋上狀態，但無下雨時間紀錄。直接重置狀態。")
                     if line_token and line_group:
-                        send_line_message(config['messages']['uncover'], line_token, line_group)
+                        for gid in line_group.split(','):
+                            gid = gid.strip()
+                            if gid:
+                                send_line_message(config['messages']['uncover'], line_token, gid)
                     state['is_covered'] = False
                     
         # 寫入狀態 (若被改變)
