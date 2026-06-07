@@ -152,30 +152,16 @@ def main():
         # 2. 營業時間檢查 (週一至週五非國定假日 08:00-19:00)
         current_date = now.date()
         
-        if current_date.year == 2026:
-            # 依據東陽 2026 行事曆
+        if current_date.year == 2026 and 'calendar_2026' in config:
+            # 依據 config.json 中的東陽 2026 行事曆設定
+            cal_config = config['calendar_2026']
             tyg_holidays_2026 = {
-                datetime.date(2026, 1, 1),   # 元旦
-                datetime.date(2026, 2, 16),  # 除夕
-                datetime.date(2026, 2, 17),  # 春節
-                datetime.date(2026, 2, 18),  # 初二
-                datetime.date(2026, 2, 19),  # 初三
-                datetime.date(2026, 2, 20),  # 補假(小年夜)
-                datetime.date(2026, 2, 27),  # 補假(和平紀念日)
-                datetime.date(2026, 4, 3),   # 補假(兒童節)
-                datetime.date(2026, 4, 6),   # 補假(清明節)
-                datetime.date(2026, 5, 1),   # 勞動節
-                datetime.date(2026, 6, 19),  # 端午節
-                datetime.date(2026, 9, 25),  # 中秋節
-                datetime.date(2026, 9, 28),  # 教師節
-                datetime.date(2026, 10, 9),  # 補假(國慶日)
-                datetime.date(2026, 10, 26), # 補假(光復節)
-                datetime.date(2026, 12, 25), # 行憲紀念日
-                datetime.date(2026, 12, 31), # 盤點休假
+                datetime.datetime.strptime(d, '%Y-%m-%d').date()
+                for d in cal_config.get('holidays', [])
             }
-            # 週末補班日
             tyg_workdays_weekend_2026 = {
-                datetime.date(2026, 12, 19), # 現場上班
+                datetime.datetime.strptime(d, '%Y-%m-%d').date()
+                for d in cal_config.get('workdays', [])
             }
             
             if current_date in tyg_holidays_2026:
