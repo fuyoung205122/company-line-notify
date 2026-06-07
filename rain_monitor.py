@@ -104,10 +104,46 @@ def main():
             return
             
         # 2. 營業時間檢查 (週一至週五非國定假日 08:00-19:00)
-        tw_holidays = holidays.TW(years=now.year)
-        if now.date() in tw_holidays or now.weekday() >= 5:
-            print("今天是週末或台灣國定假日，不執行檢查。")
-            return
+        current_date = now.date()
+        
+        if current_date.year == 2026:
+            # 依據東陽 2026 行事曆
+            tyg_holidays_2026 = {
+                datetime.date(2026, 1, 1),   # 元旦
+                datetime.date(2026, 2, 16),  # 除夕
+                datetime.date(2026, 2, 17),  # 春節
+                datetime.date(2026, 2, 18),  # 初二
+                datetime.date(2026, 2, 19),  # 初三
+                datetime.date(2026, 2, 20),  # 補假(小年夜)
+                datetime.date(2026, 2, 27),  # 補假(和平紀念日)
+                datetime.date(2026, 4, 3),   # 補假(兒童節)
+                datetime.date(2026, 4, 6),   # 補假(清明節)
+                datetime.date(2026, 5, 1),   # 勞動節
+                datetime.date(2026, 6, 19),  # 端午節
+                datetime.date(2026, 9, 25),  # 中秋節
+                datetime.date(2026, 9, 28),  # 教師節
+                datetime.date(2026, 10, 9),  # 補假(國慶日)
+                datetime.date(2026, 10, 26), # 補假(光復節)
+                datetime.date(2026, 12, 25), # 行憲紀念日
+                datetime.date(2026, 12, 31), # 盤點休假
+            }
+            # 週末補班日
+            tyg_workdays_weekend_2026 = {
+                datetime.date(2026, 12, 19), # 現場上班
+            }
+            
+            if current_date in tyg_holidays_2026:
+                print("今天是東陽行事曆國定假日，不執行檢查。")
+                return
+            if now.weekday() >= 5 and current_date not in tyg_workdays_weekend_2026:
+                print("今天是週末，不執行檢查。")
+                return
+        else:
+            # 非 2026 年，回退使用內建台灣國定假日
+            tw_holidays = holidays.TW(years=now.year)
+            if current_date in tw_holidays or now.weekday() >= 5:
+                print("今天是週末或台灣國定假日，不執行檢查。")
+                return
             
         if now.hour < 8 or now.hour >= 19:
             print("目前非營業時間 (08:00-19:00)，不執行檢查。")
