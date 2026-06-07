@@ -78,6 +78,7 @@ def send_quota_warning_email(remaining, config):
     recipient = config['email']['recipient']
     
     if not sender_email or not sender_pass:
+        print("警告：未設定 GMAIL_USER 或 GMAIL_APP_PASSWORD，無法發送額度警告信。")
         return
 
     msg = MIMEMultipart()
