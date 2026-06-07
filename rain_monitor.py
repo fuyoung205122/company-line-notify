@@ -118,13 +118,94 @@ def check_quota_and_notify(line_token, config, state, current_month_str):
     except Exception as e:
         print(f"檢查 LINE 額度失敗: {e}")
 
-def get_weather(lat, lon):
+def get_weather_open_meteo(lat, lon):
     url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=precipitation&timezone=Asia%2FTaipei"
     response = requests.get(url, timeout=10)
     response.raise_for_status()
     data = response.json()
-    precip = data.get('current', {}).get('precipitation', 0)
-    return precip > 0
+    
+    current_data = data.get('current', {})
+    precip = current_data.get('precipitation', 0)
+    obs_time_utc = current_data.get('time', '')
+    
+    # 轉換時間格式，Open-Meteo 回傳格式如 "2026-06-07T10:00"
+    try:
+        dt = datetime.datetime.strptime(obs_time_utc, "%Y-%m-%dT%H:%M")
+        obs_time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        tw_tz = pytz.timezone('Asia/Taipei')
+        obs_time_str = datetime.datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M:%S")
+        
+    is_raining = precip > 0
+    precip_display = f"{precip} mm/hr"
+    
+    print(f"Open-Meteo 觀測時間: {obs_time_str}, 雨量: {precip_display}")
+    return is_raining, obs_time_str, precip_display, "Open-Meteo (氣象署備用源)"
+
+def get_weather(station_id, api_key, lat, lon):
+    # 優先嘗試中央氣象署 API
+    try:
+        if not api_key:
+            raise ValueError("環境變數 CWA_API_KEY 未設定，無法查詢氣象署資料。")
+            
+        url = "https://opendata.cwa.gov.tw/api/v1/rest/datastore/O-A0002-001"
+        params = {
+            "Authorization": api_key,
+            "format": "JSON",
+            "StationId": station_id
+        }
+        
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        stations = data.get('records', {}).get('Station', [])
+        if not stations:
+            raise ValueError(f"氣象署 API 回傳資料中找不到測站代號: {station_id}")
+            
+        station = stations[0]
+        rainfall_element = station.get('RainfallElement', {})
+        past_10min = rainfall_element.get('Past10Min', {})
+        precip_val = past_10min.get('Precipitation', 0)
+        
+        obs_time_str = station.get('ObsTime', {}).get('DateTime', '未知時間')
+        station_name = station.get('StationName', '安南')
+        
+        # 處理特殊值
+        is_raining = False
+        precip_display = ""
+        if isinstance(precip_val, (int, float)):
+            is_raining = precip_val > 0
+            precip_display = f"{precip_val} mm"
+        elif isinstance(precip_val, str):
+            precip_str = precip_val.strip().upper()
+            if precip_str == 'T':
+                is_raining = True
+                precip_display = "微量雨跡(T)"
+            elif precip_str in ('X', '-99'):
+                raise ValueError(f"氣象署測站 {station_id} 儀器異常或缺值 (雨量值為: {precip_val})")
+            elif precip_str == '-98':
+                is_raining = False
+                precip_display = "0.0 mm"
+            else:
+                try:
+                    val_f = float(precip_str)
+                    is_raining = val_f > 0
+                    precip_display = f"{val_f} mm"
+                except ValueError:
+                    raise ValueError(f"無法解析氣象署雨量值: {precip_val}")
+        else:
+            raise ValueError(f"未知的氣象署雨量資料型態: {type(precip_val)} (值: {precip_val})")
+            
+        print(f"氣象署觀測時間: {obs_time_str}, 測站: {station_name}({station_id}), 過去10分鐘雨量值: {precip_display}")
+        return is_raining, obs_time_str, precip_display, f"中央氣象署 ({station_name}站)"
+        
+    except Exception as e:
+        print(f"警告：中央氣象署 API 查詢失敗（原因：{e}），自動切換至備援 Open-Meteo 天氣源...")
+        try:
+            return get_weather_open_meteo(lat, lon)
+        except Exception as fallback_err:
+            raise RuntimeError(f"主要天氣源與備援天氣源皆查詢失敗。主要錯誤: {e} | 備援錯誤: {fallback_err}")
 
 def main():
     try:
@@ -185,11 +266,15 @@ def main():
             print("目前非營業時間 (07:30-19:30)，不執行檢查。")
             return
 
-        # 檢查 LINE Token 與 Group ID 是否已設定
+        # 檢查環境變數是否設定
         line_token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
         line_group = os.environ.get("LINE_GROUP_ID")
+        cwa_api_key = os.environ.get("CWA_API_KEY")
+        
         if not line_token or not line_group:
             print("警告：LINE_CHANNEL_ACCESS_TOKEN 或 LINE_GROUP_ID 未設定，若觸發將無法發送 LINE 訊息。")
+        if not cwa_api_key:
+            raise ValueError("環境變數 CWA_API_KEY 未設定，無法查詢中央氣象署降雨資料。")
             
         if line_token:
             current_month_str = now.strftime('%Y-%m')
@@ -198,12 +283,21 @@ def main():
         # 3. 獲取台南市安南區天氣
         lat = config['location']['latitude']
         lon = config['location']['longitude']
-        is_raining = get_weather(lat, lon)
-        print(f"天氣檢查完畢。目前是否降雨(或毛毛雨): {is_raining}")
+        station_id = config['location'].get('cwa_station_id', 'C2O950')
+        is_raining, obs_time, precip, source = get_weather(station_id, cwa_api_key, lat, lon)
+        print(f"天氣檢查完畢。目前是否降雨(或毛毛雨): {is_raining} (資料來源: {source})")
         
         current_time_ts = now.timestamp()
         
         # 4. 核心邏輯判斷
+        info_header = (
+            f"🔔【即時觀測數據】\n"
+            f"📊 觀測時間：{obs_time}\n"
+            f"💧 降雨量：{precip}\n"
+            f"🌐 資料來源：{source}\n"
+            f"======================\n\n"
+        )
+        
         if is_raining:
             # 只要有下雨，就不斷更新「最後下雨時間」
             state['last_rain_time'] = current_time_ts
@@ -212,10 +306,11 @@ def main():
                 # 如果原本沒蓋，現在下雨了 -> 觸發蓋帆布通知
                 print("👉 偵測到開始下雨！準備發送【蓋上帆布】通知。")
                 if line_token and line_group:
+                    full_msg = info_header + config['messages']['cover']
                     for gid in line_group.split(','):
                         gid = gid.strip()
                         if gid:
-                            send_line_message(config['messages']['cover'], line_token, gid)
+                            send_line_message(full_msg, line_token, gid)
                 state['is_covered'] = True
         else:
             if state['is_covered']:
@@ -227,20 +322,22 @@ def main():
                     if diff_minutes >= 30:
                         print("👉 停雨已達 30 分鐘！準備發送【不蓋帆布】通知。")
                         if line_token and line_group:
+                            full_msg = info_header + config['messages']['uncover']
                             for gid in line_group.split(','):
                                 gid = gid.strip()
                                 if gid:
-                                    send_line_message(config['messages']['uncover'], line_token, gid)
+                                    send_line_message(full_msg, line_token, gid)
                         state['is_covered'] = False
                         state['last_rain_time'] = None # 重置下雨時間
                 else:
                     # 異常狀態防呆：有蓋帆布卻沒有記錄時間，直接解除
                     print("異常：帆布為蓋上狀態，但無下雨時間紀錄。直接重置狀態。")
                     if line_token and line_group:
+                        full_msg = info_header + config['messages']['uncover']
                         for gid in line_group.split(','):
                             gid = gid.strip()
                             if gid:
-                                send_line_message(config['messages']['uncover'], line_token, gid)
+                                send_line_message(full_msg, line_token, gid)
                     state['is_covered'] = False
                     
         # 寫入狀態 (若被改變)

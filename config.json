@@ -2,7 +2,9 @@
   "location": {
     "latitude": 23.0485,
     "longitude": 120.186,
-    "name": "台南市安南區"
+    "name": "台南市安南區",
+    "cwa_station_id": "C2O950",
+    "cwa_station_name": "安南"
   },
   "email": {
     "recipient": "fuyoung1006@gmail.com"
