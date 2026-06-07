@@ -72,6 +72,51 @@ def send_error_email(error_msg, config):
     except Exception as e:
         print(f"發送 email 失敗: {e}")
 
+def send_quota_warning_email(remaining, config):
+    sender_email = os.environ.get("GMAIL_USER")
+    sender_pass = os.environ.get("GMAIL_APP_PASSWORD")
+    recipient = config['email']['recipient']
+    
+    if not sender_email or not sender_pass:
+        return
+
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = recipient
+    msg['Subject'] = "[注意] 廠區天氣廣播 LINE 免費推播額度即將用盡"
+    
+    body = f"廠區天氣廣播 LINE 官方帳號本月的免費額度 (200則) 已經快用完了！\n\n目前剩餘免費額度：大約 {remaining} 則\n\n請留意接下來的推播可能會無法發送，或者您需要前往 LINE 官方後台升級方案。"
+    msg.attach(MIMEText(body, 'plain', 'utf-8'))
+    
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(sender_email, sender_pass)
+        server.send_message(msg)
+        server.quit()
+        print(f"額度警告信已發送至 {recipient}")
+    except Exception as e:
+        print(f"發送額度警告信失敗: {e}")
+
+def check_quota_and_notify(line_token, config, state, current_month_str):
+    if state.get('quota_warning_sent_month') == current_month_str:
+        return
+        
+    url = "https://api.line.me/v2/bot/message/quota/consumption"
+    headers = {"Authorization": f"Bearer {line_token}"}
+    try:
+        resp = requests.get(url, headers=headers, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            total_usage = data.get('totalUsage', 0)
+            remaining = 200 - total_usage
+            if remaining < 10:
+                print(f"剩餘訊息少於 10 則 (剩餘 {remaining} 則)，發送警告信件。")
+                send_quota_warning_email(remaining, config)
+                state['quota_warning_sent_month'] = current_month_str
+    except Exception as e:
+        print(f"檢查 LINE 額度失敗: {e}")
+
 def get_weather(lat, lon):
     url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=precipitation&timezone=Asia%2FTaipei"
     response = requests.get(url, timeout=10)
@@ -159,6 +204,10 @@ def main():
         if not line_token or not line_group:
             print("警告：LINE_CHANNEL_ACCESS_TOKEN 或 LINE_GROUP_ID 未設定，若觸發將無法發送 LINE 訊息。")
             
+        if line_token:
+            current_month_str = now.strftime('%Y-%m')
+            check_quota_and_notify(line_token, config, state, current_month_str)
+
         # 3. 獲取台南市安南區天氣
         lat = config['location']['latitude']
         lon = config['location']['longitude']
