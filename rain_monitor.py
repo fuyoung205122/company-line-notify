@@ -231,6 +231,11 @@ def main():
             return
             
         # 2. 營業時間檢查 (週一至週五非國定假日 08:00-19:00)
+        import sys
+        force_run = "--force" in sys.argv
+        if force_run:
+            print("偵測到 --force 參數，跳過時間、週末及國定假日限制，強制執行天氣檢查。")
+
         current_date = now.date()
         
         if current_date.year == 2026 and 'calendar_2026' in config:
@@ -245,16 +250,16 @@ def main():
                 for d in cal_config.get('workdays', [])
             }
             
-            if current_date in tyg_holidays_2026:
+            if current_date in tyg_holidays_2026 and not force_run:
                 print("今天是東陽行事曆國定假日，不執行檢查。")
                 return
-            if now.weekday() >= 5 and current_date not in tyg_workdays_weekend_2026:
+            if now.weekday() >= 5 and current_date not in tyg_workdays_weekend_2026 and not force_run:
                 print("今天是週末，不執行檢查。")
                 return
         else:
             # 非 2026 年，回退使用內建台灣國定假日
             tw_holidays = holidays.TW(years=now.year)
-            if current_date in tw_holidays or now.weekday() >= 5:
+            if (current_date in tw_holidays or now.weekday() >= 5) and not force_run:
                 print("今天是週末或台灣國定假日，不執行檢查。")
                 return
             
@@ -262,7 +267,7 @@ def main():
         start_time = datetime.time(7, 30)
         end_time = datetime.time(19, 30)
         
-        if not (start_time <= current_time <= end_time):
+        if not (start_time <= current_time <= end_time) and not force_run:
             print("目前非營業時間 (07:30-19:30)，不執行檢查。")
             return
 

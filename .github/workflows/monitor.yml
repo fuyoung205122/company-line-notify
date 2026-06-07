@@ -32,7 +32,12 @@ jobs:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           CWA_API_KEY: ${{ secrets.CWA_API_KEY }}
-        run: python rain_monitor.py
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            python rain_monitor.py --force
+          else
+            python rain_monitor.py
+          fi
 
       - name: 5. 儲存狀態檔 (若有更新)
         run: |
