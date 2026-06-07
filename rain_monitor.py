@@ -137,6 +137,11 @@ def main():
         
         print(f"--- 系統執行時間: {now.strftime('%Y-%m-%d %H:%M:%S')} ---")
         
+        # 【測試】直接發送信件並結束
+        print(f"【測試】觸發發送額度警告信件。")
+        send_quota_warning_email(9, config)
+        return
+        
         # 1. 每日 23:00 重置機制
         # 如果時間是 23:00 之後，且今天還沒執行過重置，就立刻重置。
         if now.hour >= 23 and state.get('last_reset_date') != today_str:
