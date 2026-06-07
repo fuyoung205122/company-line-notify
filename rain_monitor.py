@@ -145,8 +145,12 @@ def main():
                 print("今天是週末或台灣國定假日，不執行檢查。")
                 return
             
-        if now.hour < 8 or now.hour >= 19:
-            print("目前非營業時間 (08:00-19:00)，不執行檢查。")
+        current_time = now.time()
+        start_time = datetime.time(7, 30)
+        end_time = datetime.time(19, 30)
+        
+        if not (start_time <= current_time <= end_time):
+            print("目前非營業時間 (07:30-19:30)，不執行檢查。")
             return
 
         # 檢查 LINE Token 與 Group ID 是否已設定
