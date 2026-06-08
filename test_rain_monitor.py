@@ -67,5 +67,87 @@ class TestRainMonitor(unittest.TestCase):
         result = rain_monitor.send_to_all_line_groups("test", "token", "group-a,group-b")
         self.assertFalse(result)
 
+    @patch('rain_monitor.requests.get')
+    def test_get_weather_description_success(self, mock_get):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "records": {
+                "Station": [{
+                    "StationName": "安南",
+                    "ObsTime": {"DateTime": "2026-06-08T09:10:00+08:00"},
+                    "WeatherElement": {
+                        "Weather": "毛毛雨"
+                    }
+                }]
+            }
+        }
+        mock_get.return_value = mock_resp
+        
+        weather, obs_time = rain_monitor.get_weather_description("C2O950", "test-key")
+        self.assertEqual(weather, "毛毛雨")
+        self.assertEqual(obs_time, "2026-06-08T09:10:00+08:00")
+
+    @patch('rain_monitor.requests.get')
+    def test_get_radar_echo_with_rain(self, mock_get):
+        mock_meta_resp = MagicMock()
+        mock_meta_resp.json.return_value = {
+            "cwaopendata": {
+                "dataset": {
+                    "resource": {
+                        "ProductURL": "https://dummy-url.png"
+                    }
+                }
+            }
+        }
+        
+        from PIL import Image
+        import io
+        img = Image.new("RGB", (100, 100), (255, 255, 255))
+        img.putpixel((50, 50), (0, 255, 0))
+        img.putpixel((50, 51), (0, 255, 0))
+        img.putpixel((51, 50), (0, 255, 0))
+        
+        img_bytes = io.BytesIO()
+        img.save(img_bytes, format='PNG')
+        img_bytes.seek(0)
+        
+        mock_img_resp = MagicMock()
+        mock_img_resp.content = img_bytes.read()
+        
+        mock_get.side_effect = [mock_meta_resp, mock_img_resp]
+        
+        has_echo, count = rain_monitor.get_radar_echo("test-key", 50, 50, 5, 20, 3)
+        self.assertTrue(has_echo)
+        self.assertEqual(count, 3)
+
+    @patch('rain_monitor.requests.get')
+    def test_get_radar_echo_no_rain(self, mock_get):
+        mock_meta_resp = MagicMock()
+        mock_meta_resp.json.return_value = {
+            "cwaopendata": {
+                "dataset": {
+                    "resource": {
+                        "ProductURL": "https://dummy-url.png"
+                    }
+                }
+            }
+        }
+        
+        from PIL import Image
+        import io
+        img = Image.new("RGB", (100, 100), (255, 255, 255))
+        img_bytes = io.BytesIO()
+        img.save(img_bytes, format='PNG')
+        img_bytes.seek(0)
+        
+        mock_img_resp = MagicMock()
+        mock_img_resp.content = img_bytes.read()
+        
+        mock_get.side_effect = [mock_meta_resp, mock_img_resp]
+        
+        has_echo, count = rain_monitor.get_radar_echo("test-key", 50, 50, 5, 20, 3)
+        self.assertFalse(has_echo)
+        self.assertEqual(count, 0)
+
 if __name__ == '__main__':
     unittest.main()

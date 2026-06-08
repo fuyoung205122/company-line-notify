@@ -2,9 +2,17 @@
   "location": {
     "latitude": 23.0485,
     "longitude": 120.186,
-    "name": "台南市安南區",
+    "name": "台南市安南區慶和路二段58號",
     "cwa_station_id": "C2O950",
-    "cwa_station_name": "安南"
+    "cwa_station_name": "安南",
+    "factory_pixel_x": 1623,
+    "factory_pixel_y": 1941
+  },
+  "radar_settings": {
+    "cover_radius_px": 28,
+    "uncover_radius_px": 56,
+    "echo_pixel_threshold": 3,
+    "color_diff_threshold": 20
   },
   "email": {
     "recipient": "fuyoung1006@gmail.com"

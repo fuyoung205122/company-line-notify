@@ -9,6 +9,9 @@ import requests
 import pytz
 import holidays
 import traceback
+import io
+from PIL import Image
+import numpy as np
 
 # 檔案路徑設定
 DIR_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -236,6 +239,79 @@ def get_weather(station_id, api_key, lat, lon):
         except Exception as fallback_err:
             raise RuntimeError(f"主要天氣源與備援天氣源皆查詢失敗。主要錯誤: {e} | 備援錯誤: {fallback_err}")
 
+def get_weather_description(station_id, api_key):
+    if not api_key:
+        raise ValueError("CWA_API_KEY 未設定，無法查詢天氣現象描述。")
+    url = "https://opendata.cwa.gov.tw/api/v1/rest/datastore/O-A0003-001"
+    params = {
+        "Authorization": api_key,
+        "format": "JSON",
+        "StationId": station_id
+    }
+    response = requests.get(url, params=params, timeout=10)
+    response.raise_for_status()
+    data = response.json()
+    stations = data.get('records', {}).get('Station', [])
+    if not stations:
+        raise ValueError(f"O-A0003-001 回傳資料中找不到測站代號: {station_id}")
+    station = stations[0]
+    weather_element = station.get('WeatherElement', {})
+    weather = weather_element.get('Weather', '未知')
+    obs_time = station.get('ObsTime', {}).get('DateTime', '未知時間')
+    return weather.strip(), obs_time
+
+def get_radar_echo(api_key, factory_x, factory_y, radius_px, threshold_diff=20, threshold_count=3):
+    if not api_key:
+        raise ValueError("CWA_API_KEY 未設定，無法查詢雷達回波圖。")
+    
+    # 1. 取得雷達回波圖的最新 URL
+    meta_url = "https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/O-A0058-001"
+    params = {
+        "Authorization": api_key,
+        "format": "JSON"
+    }
+    meta_resp = requests.get(meta_url, params=params, timeout=10)
+    meta_resp.raise_for_status()
+    meta_data = meta_resp.json()
+    
+    product_url = meta_data.get('cwaopendata', {}).get('dataset', {}).get('resource', {}).get('ProductURL')
+    if not product_url:
+        raise ValueError("未能在 O-A0058-001 檔案資訊中找到 ProductURL")
+        
+    # 2. 下載雷達回波圖 PNG
+    img_resp = requests.get(product_url, timeout=15)
+    img_resp.raise_for_status()
+    
+    # 3. 讀取並分析影像像素
+    img = Image.open(io.BytesIO(img_resp.content))
+    img_arr = np.array(img)
+    
+    if len(img_arr.shape) != 3 or img_arr.shape[2] < 3:
+        raise ValueError(f"雷達影像色彩通道異常，陣列形狀為: {img_arr.shape}")
+        
+    h, w, _ = img_arr.shape
+    y_min = max(0, factory_y - radius_px)
+    y_max = min(h, factory_y + radius_px + 1)
+    x_min = max(0, factory_x - radius_px)
+    x_max = min(w, factory_x + radius_px + 1)
+    
+    sub_grid = img_arr[y_min:y_max, x_min:x_max]
+    
+    # 使用 numpy 向量化快速計算
+    y_idx, x_idx = np.ogrid[y_min - factory_y : y_max - factory_y, x_min - factory_x : x_max - factory_x]
+    circle_mask = (x_idx**2 + y_idx**2 <= radius_px**2)
+    
+    sub_grid_int = sub_grid.astype(int)
+    max_val = np.max(sub_grid_int[:, :, :3], axis=2)
+    min_val = np.min(sub_grid_int[:, :, :3], axis=2)
+    diff_val = max_val - min_val
+    
+    echo_mask = circle_mask & (diff_val >= threshold_diff)
+    echo_count = np.sum(echo_mask)
+    
+    has_echo = echo_count >= threshold_count
+    return has_echo, int(echo_count)
+
 def main():
     try:
         # 讀取設定檔
@@ -334,49 +410,126 @@ def main():
         lat = config['location']['latitude']
         lon = config['location']['longitude']
         station_id = config['location'].get('cwa_station_id', 'C2O950')
-        is_raining, obs_time, precip, source = get_weather(station_id, cwa_api_key, lat, lon)
-        print(f"天氣檢查完畢。目前是否降雨(或毛毛雨): {is_raining} (資料來源: {source})")
+        
+        # 3.1 讀取雨量計資料
+        try:
+            is_raining_gauge, obs_time, precip, source = get_weather(station_id, cwa_api_key, lat, lon)
+            print(f"雨量計觀測結果: 是否有雨: {is_raining_gauge} | 觀測時間: {obs_time} | 雨量值: {precip} | 來源: {source}")
+        except Exception as e:
+            print(f"警告：讀取雨量計資料失敗: {e}，雨量計判定為無雨。")
+            is_raining_gauge = False
+            obs_time = now.strftime('%Y-%m-%d %H:%M:%S')
+            precip = "未知"
+            source = "未明 (讀取失敗)"
+            
+        # 3.2 讀取天氣現象描述
+        weather_description = "未知"
+        try:
+            if cwa_api_key:
+                weather_description, _ = get_weather_description(station_id, cwa_api_key)
+                print(f"氣象署測站天氣現象描述: '{weather_description}'")
+            else:
+                print("未設定 CWA_API_KEY，跳過氣象署天氣描述檢查。")
+        except Exception as e:
+            print(f"警告：讀取氣象署天氣現象描述失敗: {e}")
+            
+        # 3.3 讀取雷達回波
+        has_radar_echo_cover = False
+        has_radar_echo_uncover = False
+        radar_pixels_cover = 0
+        radar_pixels_uncover = 0
+        
+        r_settings = config.get('radar_settings', {})
+        cov_rad = r_settings.get('cover_radius_px', 28)
+        uncov_rad = r_settings.get('uncover_radius_px', 56)
+        echo_pixel_thres = r_settings.get('echo_pixel_threshold', 3)
+        color_diff_thres = r_settings.get('color_diff_threshold', 20)
+        fact_x = config['location'].get('factory_pixel_x', 1623)
+        fact_y = config['location'].get('factory_pixel_y', 1941)
+        
+        try:
+            if cwa_api_key:
+                has_radar_echo_cover, radar_pixels_cover = get_radar_echo(
+                    cwa_api_key, fact_x, fact_y, cov_rad, color_diff_thres, echo_pixel_thres
+                )
+                has_radar_echo_uncover, radar_pixels_uncover = get_radar_echo(
+                    cwa_api_key, fact_x, fact_y, uncov_rad, color_diff_thres, echo_pixel_thres
+                )
+                print(f"雷達回波檢測: 10km半徑內是否有回波: {has_radar_echo_cover} (回波點數: {radar_pixels_cover}) | 20km半徑內是否有回波: {has_radar_echo_uncover} (回波點數: {radar_pixels_uncover})")
+            else:
+                print("未設定 CWA_API_KEY，跳過雷達回波檢查。")
+        except Exception as e:
+            print(f"警告：讀取或解析雷達回波圖失敗: {e}")
         
         current_time_ts = now.timestamp()
         
         # 4. 核心邏輯判斷
+        # 4.1 檢查是否有任何降雨訊號 (加蓋條件)
+        rain_keywords = ["雨", "小雨", "細雨", "陣雨", "毛毛雨"]
+        is_raining_phenomena = any(kw in weather_description for kw in rain_keywords)
+        
+        # 滿足以下任一條件即判定為降雨 (加蓋帆布觸發)
+        # 1. 天氣現象有雨相關關鍵字
+        # 2. 雨量計顯示有雨 (>0 或 T)
+        # 3. 雷達回波 10km 內有降雨區
+        has_rain_now = is_raining_phenomena or is_raining_gauge or has_radar_echo_cover
+        
+        radar_info = f"10km半徑內有回波 ({radar_pixels_cover}點)" if has_radar_echo_cover else "無回波"
         info_header = (
             f"🔔【即時觀測數據】\n"
             f"📊 觀測時間：{obs_time}\n"
-            f"💧 降雨量：{precip}\n"
+            f"💧 當前雨量：{precip}\n"
+            f"📝 天氣現象：{weather_description}\n"
+            f"📡 雷達回波：{radar_info}\n"
             f"🌐 資料來源：{source}\n"
             f"======================\n\n"
         )
         
-        if is_raining:
-            # 只要有下雨，就不斷更新「最後下雨時間」
+        if has_rain_now:
+            # 只要判定有降雨，就持續更新最後降雨時間
             state['last_rain_time'] = current_time_ts
             
             if not state['is_covered']:
-                # 如果原本沒蓋，現在下雨了 -> 觸發蓋帆布通知
-                print("👉 偵測到開始下雨！準備發送【蓋上帆布】通知。")
+                # 狀態轉移: 🟢 -> 🔴
+                print("👉 滿足加蓋防呆條件！準備發送【加蓋帆布】通知。")
                 full_msg = info_header + config['messages']['cover']
                 send_to_all_line_groups(full_msg, line_token, line_group)
                 state['is_covered'] = True
+            else:
+                # 狀態鎖定: 🔴 -> 🔴
+                print("目前已處於加蓋狀態，且偵測到降雨訊號，不重複發送通知。")
         else:
             if state['is_covered']:
-                # 目前沒下雨，但帆布是蓋著的 -> 開始計算是否超過 30 分鐘
+                # 4.2 檢查是否滿足解除加蓋條件 (必須全部滿足)
+                # 1. 天氣現象沒有降雨相關關鍵字描述
+                cond1 = not is_raining_phenomena
+                # 2. 雨量計判定無雨
+                cond2 = not is_raining_gauge
+                # 3. 未來30分鐘無降雨接近 (雷達回波 20km 內無降雨區)
+                cond3 = not has_radar_echo_uncover
+                # 4. 連續60分鐘無降雨 (最後一次下雨時間已過 3600 秒)
                 last_rain = state.get('last_rain_time')
                 if last_rain is not None:
-                    diff_minutes = (current_time_ts - last_rain) / 60.0
-                    print(f"目前無雨。距離最後一次下雨已過: {diff_minutes:.1f} 分鐘。")
-                    if diff_minutes >= 30:
-                        print("👉 停雨已達 30 分鐘！準備發送【不蓋帆布】通知。")
-                        full_msg = info_header + config['messages']['uncover']
-                        send_to_all_line_groups(full_msg, line_token, line_group)
-                        state['is_covered'] = False
-                        state['last_rain_time'] = None # 重置下雨時間
+                    diff_seconds = current_time_ts - last_rain
+                    diff_minutes = diff_seconds / 60.0
+                    cond4 = diff_seconds >= 3600
+                    print(f"目前無雨。距離最後一次下雨已過: {diff_minutes:.1f} 分鐘 (解除需滿 60 分鐘)。")
                 else:
-                    # 異常狀態防呆：有蓋帆布卻沒有記錄時間，直接解除
-                    print("異常：帆布為蓋上狀態，但無下雨時間紀錄。直接重置狀態。")
+                    cond4 = True
+                    print("異常：沒有最後降雨時間紀錄，防呆預設允許解除。")
+                
+                print(f"解除條件檢查: 天氣現象無雨={cond1} | 雨量計無雨={cond2} | 20km雷達無雨={cond3} | 已過60分鐘={cond4}")
+                
+                if cond1 and cond2 and cond3 and cond4:
+                    # 狀態轉移: 🔴 -> 🟢
+                    print("👉 已停雨且滿足所有解除條件！準備發送【暫不加蓋】通知。")
                     full_msg = info_header + config['messages']['uncover']
                     send_to_all_line_groups(full_msg, line_token, line_group)
                     state['is_covered'] = False
+                    state['last_rain_time'] = None
+                else:
+                    # 狀態鎖定: 🔴
+                    print("未滿足所有解除條件，保持加蓋狀態。")
                     
         # 寫入狀態 (若被改變)
         save_json(STATE_FILE, state)
