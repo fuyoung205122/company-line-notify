@@ -14,6 +14,19 @@ import traceback
 DIR_PATH = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(DIR_PATH, "config.json")
 STATE_FILE = os.path.join(DIR_PATH, "state.json")
+SECRETS_FILE = os.path.join(DIR_PATH, "secrets.json")
+
+# 讀取本機 secrets.json 作為環境變數的備援
+SECRETS = {}
+if os.path.exists(SECRETS_FILE):
+    try:
+        with open(SECRETS_FILE, 'r', encoding='utf-8') as f:
+            SECRETS = json.load(f)
+    except Exception as e:
+        print(f"警告：讀取 secrets.json 失敗: {e}")
+
+def get_env_or_secret(key):
+    return os.environ.get(key) or SECRETS.get(key)
 
 def load_json(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -62,8 +75,8 @@ def send_to_all_line_groups(message, token, line_group):
     return all(results)
 
 def send_error_email(error_msg, config):
-    sender_email = os.environ.get("GMAIL_USER")
-    sender_pass = os.environ.get("GMAIL_APP_PASSWORD")
+    sender_email = get_env_or_secret("GMAIL_USER")
+    sender_pass = get_env_or_secret("GMAIL_APP_PASSWORD")
     recipient = config['email']['recipient']
     
     if not sender_email or not sender_pass:
@@ -89,8 +102,8 @@ def send_error_email(error_msg, config):
         print(f"發送 email 失敗: {e}")
 
 def send_quota_warning_email(remaining, config):
-    sender_email = os.environ.get("GMAIL_USER")
-    sender_pass = os.environ.get("GMAIL_APP_PASSWORD")
+    sender_email = get_env_or_secret("GMAIL_USER")
+    sender_pass = get_env_or_secret("GMAIL_APP_PASSWORD")
     recipient = config['email']['recipient']
     
     if not sender_email or not sender_pass:
@@ -238,8 +251,8 @@ def main():
         force_run = "--force" in sys.argv
         test_line = "--test-line" in sys.argv
 
-        line_token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
-        line_group = os.environ.get("LINE_GROUP_ID")
+        line_token = get_env_or_secret("LINE_CHANNEL_ACCESS_TOKEN")
+        line_group = get_env_or_secret("LINE_GROUP_ID")
 
         if test_line:
             print("偵測到 --test-line 參數，執行 LINE 測試發送。")
@@ -304,14 +317,14 @@ def main():
             return
 
         # 檢查環境變數是否設定
-        cwa_api_key = os.environ.get("CWA_API_KEY")
+        cwa_api_key = get_env_or_secret("CWA_API_KEY")
         
         if not line_token or not line_group:
             print("警告：LINE_CHANNEL_ACCESS_TOKEN 或 LINE_GROUP_ID 未設定，若觸發將無法發送 LINE 訊息。")
         else:
             print(f"LINE 設定已讀取，目標群組數量: {len(get_line_group_ids(line_group))}")
         if not cwa_api_key:
-            raise ValueError("環境變數 CWA_API_KEY 未設定，無法查詢中央氣象署降雨資料。")
+            raise ValueError("環境變數或 secrets.json 中的 CWA_API_KEY 未設定，無法查詢中央氣象署降雨資料。")
             
         if line_token:
             current_month_str = now.strftime('%Y-%m')

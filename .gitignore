@@ -1,0 +1,11 @@
+# Local secret configuration
+secrets.json
+.env
+
+# Python build/cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary backups
+*.bak
