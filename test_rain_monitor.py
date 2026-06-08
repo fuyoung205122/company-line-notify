@@ -156,5 +156,40 @@ class TestRainMonitor(unittest.TestCase):
         self.assertTrue(result)
         mock_send.assert_not_called()
 
+
+    @patch('rain_monitor.load_json')
+    @patch('rain_monitor.save_json')
+    @patch('rain_monitor.get_env_or_secret')
+    def test_daily_reset_logic(self, mock_env, mock_save, mock_load):
+        # 測試當跨日時，狀態檔會被自動重置且保存
+        mock_load.side_effect = [
+            # 第一次載入 config.json
+            {
+                "location": {"latitude": 23.0, "longitude": 120.0},
+                "calendar_2026": {"holidays": [], "workdays": []}
+            },
+            # 第二次載入 state.json
+            {
+                "is_covered": True,
+                "last_rain_time": 123456789.0,
+                "last_reset_date": "2026-06-08"
+            }
+        ]
+        
+        # 模擬環境變數，讓程式丟出例外，方便我們在重置後中斷測試
+        mock_env.return_value = None
+        
+        # 執行 main，因為 CWA_API_KEY 未設定，程式會在重置後丟出 ValueError 被 catch 後調用 sys.exit(1)
+        with self.assertRaises(SystemExit):
+            rain_monitor.main()
+            
+        # 驗證 save_json 是否被呼叫來保存重置後的 state
+        today_str = rain_monitor.datetime.datetime.now(rain_monitor.pytz.timezone('Asia/Taipei')).strftime('%Y-%m-%d')
+        mock_save.assert_any_call(rain_monitor.STATE_FILE, {
+            "is_covered": False,
+            "last_rain_time": None,
+            "last_reset_date": today_str
+        })
+
 if __name__ == '__main__':
     unittest.main()

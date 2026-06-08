@@ -345,16 +345,15 @@ def main():
                 raise ValueError("LINE 測試發送失敗：請檢查 LINE token、群組 ID、官方帳號是否已加入群組。")
             return
         
-        # 1. 每日 23:00 重置機制
-        # 如果時間是 23:00 之後，且今天還沒執行過重置，就立刻重置。
-        if now.hour >= 23 and state.get('last_reset_date') != today_str:
-            print("執行每日 23:00 重置...")
+        # 1. 每日跨日重置機制
+        # 如果今天還沒有執行過重置（跨日後第一次執行），就重置狀態。
+        if state.get('last_reset_date') != today_str:
+            print(f"執行每日跨日重置 (上次重置日期: {state.get('last_reset_date')} -> 今日: {today_str})...")
             state['is_covered'] = False
             state['last_rain_time'] = None
             state['last_reset_date'] = today_str
             save_json(STATE_FILE, state)
             print("狀態檔重置完成。")
-            return
             
         # 2. 營業時間檢查 (週一至週五非國定假日 08:00-19:00)
         if force_run:
