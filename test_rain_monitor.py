@@ -149,5 +149,12 @@ class TestRainMonitor(unittest.TestCase):
         self.assertFalse(has_echo)
         self.assertEqual(count, 0)
 
+    @patch('rain_monitor.send_line_message')
+    def test_send_to_all_line_groups_disabled(self, mock_send):
+        # 測試手動關閉 LINE 通知時，是否不會呼叫 API 發送，且返回 True
+        result = rain_monitor.send_to_all_line_groups("test msg", "token", "group-a", enable_line_notifications=False)
+        self.assertTrue(result)
+        mock_send.assert_not_called()
+
 if __name__ == '__main__':
     unittest.main()

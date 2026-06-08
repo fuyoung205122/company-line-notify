@@ -68,7 +68,10 @@ def get_line_group_ids(line_group):
         return []
     return [gid.strip() for gid in line_group.split(',') if gid.strip()]
 
-def send_to_all_line_groups(message, token, line_group):
+def send_to_all_line_groups(message, token, line_group, enable_line_notifications=True):
+    if not enable_line_notifications:
+        print("[手動控制] LINE 通知已手動暫停（enable_line_notifications=False），不進行實際發送。")
+        return True
     group_ids = get_line_group_ids(line_group)
     print(f"LINE 目標群組數量: {len(group_ids)}")
     if not token or not group_ids:
@@ -326,7 +329,7 @@ def main():
         import sys
         force_run = "--force" in sys.argv
         test_line = "--test-line" in sys.argv
-
+        enable_line = config.get("enable_line_notifications", True)
         line_token = get_env_or_secret("LINE_CHANNEL_ACCESS_TOKEN")
         line_group = get_env_or_secret("LINE_GROUP_ID")
 
@@ -337,7 +340,7 @@ def main():
                 f"系統時間：{now.strftime('%Y-%m-%d %H:%M:%S')}\n"
                 f"這是一則測試訊息，用來確認群組通知設定正常。"
             )
-            sent = send_to_all_line_groups(test_msg, line_token, line_group)
+            sent = send_to_all_line_groups(test_msg, line_token, line_group, enable_line)
             if not sent:
                 raise ValueError("LINE 測試發送失敗：請檢查 LINE token、群組 ID、官方帳號是否已加入群組。")
             return
@@ -493,7 +496,7 @@ def main():
                 # 狀態轉移: 🟢 -> 🔴
                 print("👉 滿足加蓋防呆條件！準備發送【加蓋帆布】通知。")
                 full_msg = info_header + config['messages']['cover']
-                send_to_all_line_groups(full_msg, line_token, line_group)
+                send_to_all_line_groups(full_msg, line_token, line_group, enable_line)
                 state['is_covered'] = True
             else:
                 # 狀態鎖定: 🔴 -> 🔴
@@ -524,7 +527,7 @@ def main():
                     # 狀態轉移: 🔴 -> 🟢
                     print("👉 已停雨且滿足所有解除條件！準備發送【暫不加蓋】通知。")
                     full_msg = info_header + config['messages']['uncover']
-                    send_to_all_line_groups(full_msg, line_token, line_group)
+                    send_to_all_line_groups(full_msg, line_token, line_group, enable_line)
                     state['is_covered'] = False
                     state['last_rain_time'] = None
                 else:
