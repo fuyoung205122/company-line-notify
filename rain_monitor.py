@@ -55,7 +55,7 @@ def send_line_message(message, token, group_id):
         ]
     }
     try:
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=headers, json=data, timeout=10)
         response.raise_for_status()
         print(f"LINE Messaging API 發送至 {group_id} 成功。")
         return True

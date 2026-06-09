@@ -157,6 +157,7 @@ class TestRainMonitor(unittest.TestCase):
         mock_send.assert_not_called()
 
 
+    @patch('sys.argv', ['rain_monitor.py', '--force'])
     @patch('rain_monitor.load_json')
     @patch('rain_monitor.save_json')
     @patch('rain_monitor.get_env_or_secret')
