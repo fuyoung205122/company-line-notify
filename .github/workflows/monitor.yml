@@ -1,6 +1,9 @@
 name: Rain Monitor Cron Job
 
 on:
+  schedule:
+    # GitHub Actions 使用 UTC 時間。每 10 分鐘執行一次，避開整點降低延遲。
+    - cron: '2,12,22,32,42,52 * * * *'
   workflow_dispatch: # 允許在 GitHub 網頁上手動點擊執行測試
     inputs:
       run_mode:
