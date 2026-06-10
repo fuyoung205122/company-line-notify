@@ -18,7 +18,7 @@
 ## 📂 核心檔案說明
 - `rain_monitor.py`：主程式邏輯，包含氣象數據抓取、雷達圖像素分析（numpy 遮罩計算）、時間與假日判斷、狀態比對及 LINE 推播。
 - `config.json`：存放地理位置（經緯度、測站與雷達畫素座標）、通知訊息範本、錯誤通知收件人、**東陽 2026 行事曆設定**（已與代碼分離）以及 `enable_line_notifications` 手動控制開關。
-- `state.json`：紀錄機器人當前狀態，包含 `is_covered` (目前是否判定為蓋上帆布狀態)、`last_rain_time` (最後一次下雨的時間戳記) 及 `last_reset_date` (每日 23:00 重置日期)。
+- `state.json`：紀錄機器人當前狀態，包含 `is_covered` (目前是否判定為蓋上帆布狀態)、`last_rain_time` (最後一次下雨的時間戳記) 及 `last_reset_date` (最後一次跨日重置的日期)。
 - `test_rain_monitor.py`：本地單元測試腳本，使用 Python 內建 unittest 庫，可在不上傳 GitHub 的情況下直接測試 API 模擬與 JSON 解析。
 - `.github/workflows/monitor.yml`：定義 GitHub Actions 執行排程與環境變數注入。
 
@@ -40,9 +40,13 @@
      2. 雨量計判定無雨。
      3. **雷達回波圖 5km 半徑內無雷達回波**（對應雷達圖 14 像素半徑，且降雨像素點小於 50 點）。
      4. **持續停雨達 30 分鐘** (自最後下雨時間 `last_rain_time` 計算)。
-5. **狀態重置**：每日 23:00 會自動將 `state.json` 恢復初始狀態，確保隔日重新開始。
+5. **狀態重置**：每日跨日後第一次執行時，會自動將 `state.json` 恢復初始狀態，確保當日重新開始計算。
 
 ---
+
+## 🛡️ 系統穩定性機制
+- **API 請求逾時處理**：所有呼叫外部 API (`requests.post`, `requests.get`) 皆加上 `timeout=10`，避免服務卡死。
+- **手動覆蓋開關**：設定檔內有 `enable_line_notifications` 參數，可於緊急狀況時暫停 LINE 推播。
 
 ## 🔑 環境變數 (Secrets)
 開發或測試時需確保 GitHub Secrets 或本地 `secrets.json` 中配置有以下變數：
