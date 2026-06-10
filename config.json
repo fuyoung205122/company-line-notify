@@ -9,9 +9,9 @@
     "factory_pixel_y": 1941
   },
   "radar_settings": {
-    "cover_radius_px": 28,
-    "uncover_radius_px": 56,
-    "echo_pixel_threshold": 3,
+    "cover_radius_px": 6,
+    "uncover_radius_px": 14,
+    "echo_pixel_threshold": 50,
     "color_diff_threshold": 20
   },
   "email": {
