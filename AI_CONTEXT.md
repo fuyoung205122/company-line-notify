@@ -20,7 +20,10 @@
 - `config.json`：存放地理位置（經緯度、測站與雷達畫素座標）、通知訊息範本、錯誤通知收件人、**東陽 2026 行事曆設定**（已與代碼分離）以及 `enable_line_notifications` 手動控制開關。
 - `state.json`：紀錄機器人當前狀態，包含 `is_covered` (目前是否判定為蓋上帆布狀態)、`last_rain_time` (最後一次下雨的時間戳記) 及 `last_reset_date` (最後一次跨日重置的日期)。
 - `test_rain_monitor.py`：本地單元測試腳本，使用 Python 內建 unittest 庫，可在不上傳 GitHub 的情況下直接測試 API 模擬與 JSON 解析。
-- `.github/workflows/monitor.yml`：定義 GitHub Actions 執行排程與環境變數注入。
+- `.github/workflows/monitor.yml`：定義 GitHub Actions 執行排程與環境變數注入.
+- `system_architecture.md`：系統架構圖說明文件，內含 Mermaid 架構圖。
+- `system_architecture.mermaid`：Mermaid 格式的系統架構圖定義檔。
+- `2026年東陽行事曆_copy.pdf`：東陽 2026 官方行事曆參考文件。
 
 ---
 
@@ -41,6 +44,31 @@
      3. **雷達回波圖 5km 半徑內無雷達回波**（對應雷達圖 14 像素半徑，且降雨像素點小於 50 點）。
      4. **持續停雨達 30 分鐘** (自最後下雨時間 `last_rain_time` 計算)。
 5. **狀態重置**：每日跨日後第一次執行時，會自動將 `state.json` 恢復初始狀態，確保當日重新開始計算。
+
+---
+
+## 🗺️ 系統架構圖
+
+```mermaid
+graph TD
+    Trigger[GitHub 雲端排程] -->|每10分鐘喚醒| Exec[rain_monitor.py]
+    Exec -->|1. 讀取| Config[(config.json)]
+    Exec -->|2. 讀取| State[(state.json)]
+    Exec -->|3. GET 數據| CWA[中央氣象署 API]
+    
+    CWA -->|傳回雨量、天氣描述、雷達圖| Exec
+    
+    Exec -->|判定有雨| LINE[LINE Messaging API]
+    Exec -->|判定雨停滿30分且雷達乾淨| LINE
+    
+    LINE -->|傳送推播| Users[同仁 LINE 群組]
+    
+    Exec -->|異常報錯| Gmail[Gmail SMTP]
+    Gmail -->|發送郵件| Admin[管理員信箱]
+    
+    Exec -->|4. 自動更新狀態| State
+    State -->|Git Push| GitHub[GitHub 儲存庫]
+```
 
 ---
 
