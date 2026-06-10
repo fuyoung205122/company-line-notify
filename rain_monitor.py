@@ -444,7 +444,8 @@ def main():
         r_settings = config.get('radar_settings', {})
         cov_rad = r_settings.get('cover_radius_px', 28)
         uncov_rad = r_settings.get('uncover_radius_px', 56)
-        echo_pixel_thres = r_settings.get('echo_pixel_threshold', 3)
+        echo_pixel_thres_cov = r_settings.get('echo_pixel_threshold_cover', 55)
+        echo_pixel_thres_uncov = r_settings.get('echo_pixel_threshold_uncover', 40)
         color_diff_thres = r_settings.get('color_diff_threshold', 20)
         fact_x = config['location'].get('factory_pixel_x', 1623)
         fact_y = config['location'].get('factory_pixel_y', 1941)
@@ -452,10 +453,10 @@ def main():
         try:
             if cwa_api_key:
                 has_radar_echo_cover, radar_pixels_cover = get_radar_echo(
-                    cwa_api_key, fact_x, fact_y, cov_rad, color_diff_thres, echo_pixel_thres
+                    cwa_api_key, fact_x, fact_y, cov_rad, color_diff_thres, echo_pixel_thres_cov
                 )
                 has_radar_echo_uncover, radar_pixels_uncover = get_radar_echo(
-                    cwa_api_key, fact_x, fact_y, uncov_rad, color_diff_thres, echo_pixel_thres
+                    cwa_api_key, fact_x, fact_y, uncov_rad, color_diff_thres, echo_pixel_thres_uncov
                 )
                 print(f"雷達回波檢測: 2km半徑內是否有回波: {has_radar_echo_cover} (回波點數: {radar_pixels_cover}) | 5km半徑內是否有回波: {has_radar_echo_uncover} (回波點數: {radar_pixels_uncover})")
             else:
@@ -467,14 +468,13 @@ def main():
         
         # 4. 核心邏輯判斷
         # 4.1 檢查是否有任何降雨訊號 (加蓋條件)
-        rain_keywords = ["雨", "小雨", "細雨", "陣雨", "毛毛雨"]
-        is_raining_phenomena = any(kw in weather_description for kw in rain_keywords)
+        # (已依照使用者要求移除天氣現象是否有雨字的判斷)
+        is_raining_phenomena = False
         
         # 滿足以下任一條件即判定為降雨 (加蓋帆布觸發)
-        # 1. 天氣現象有雨相關關鍵字
-        # 2. 雨量計顯示有雨 (>0 或 T)
-        # 3. 雷達回波 2km 內有降雨區
-        has_rain_now = is_raining_phenomena or is_raining_gauge or has_radar_echo_cover
+        # 1. 雨量計顯示有雨 (>0 或 T)
+        # 2. 雷達回波 2km 內有降雨區
+        has_rain_now = is_raining_gauge or has_radar_echo_cover
         
         radar_info = f"2km半徑內有回波 ({radar_pixels_cover}點)" if has_radar_echo_cover else "無回波"
         info_header = (
@@ -503,8 +503,7 @@ def main():
         else:
             if state['is_covered']:
                 # 4.2 檢查是否滿足解除加蓋條件 (必須全部滿足)
-                # 1. 天氣現象沒有降雨相關關鍵字描述
-                cond1 = not is_raining_phenomena
+                # 1. (已移除) 不再檢查天氣現象預報是否無雨
                 # 2. 雨量計判定無雨
                 cond2 = not is_raining_gauge
                 # 3. 未來無降雨接近 (雷達回波 5km 內無降雨區)
@@ -520,9 +519,9 @@ def main():
                     cond4 = True
                     print("異常：沒有最後降雨時間紀錄，防呆預設允許解除。")
                 
-                print(f"解除條件檢查: 天氣現象無雨={cond1} | 雨量計無雨={cond2} | 5km雷達無雨={cond3} | 已過30分鐘={cond4}")
+                print(f"解除條件檢查: 雨量計無雨={cond2} | 5km雷達無雨={cond3} | 已過30分鐘={cond4}")
                 
-                if cond1 and cond2 and cond3 and cond4:
+                if cond2 and cond3 and cond4:
                     # 狀態轉移: 🔴 -> 🟢
                     print("👉 已停雨且滿足所有解除條件！準備發送【暫不加蓋】通知。")
                     full_msg = info_header + config['messages']['uncover']

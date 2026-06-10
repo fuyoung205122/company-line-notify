@@ -11,7 +11,8 @@
   "radar_settings": {
     "cover_radius_px": 6,
     "uncover_radius_px": 14,
-    "echo_pixel_threshold": 50,
+    "echo_pixel_threshold_cover": 55,
+    "echo_pixel_threshold_uncover": 40,
     "color_diff_threshold": 20
   },
   "email": {
