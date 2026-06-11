@@ -21,6 +21,22 @@ STATE_FILE = os.path.join(DIR_PATH, "state.json")
 SECRETS_FILE = os.path.join(DIR_PATH, "secrets.json")
 LOG_FILE = os.path.join(DIR_PATH, "history_log.csv")
 
+# 氣象署雷達 dBZ 色階對應表 (近似值)
+DBZ_COLOR_MAP = {
+    (153, 204, 255): 10,
+    (0, 153, 255): 15,
+    (0, 0, 255): 20,
+    (0, 255, 0): 25,
+    (0, 204, 0): 30,
+    (255, 255, 0): 35,
+    (255, 204, 0): 40,
+    (255, 0, 0): 45,
+    (204, 0, 0): 50,
+    (255, 0, 255): 55,
+    (153, 0, 204): 60,
+    (255, 153, 204): 65
+}
+
 # 讀取本機 secrets.json 作為環境變數的備援
 SECRETS = {}
 if os.path.exists(SECRETS_FILE):
@@ -314,16 +330,40 @@ def get_radar_echo(api_key, factory_x, factory_y, radius_px, threshold_diff=20, 
     echo_mask = circle_mask & (diff_val >= threshold_diff)
     echo_count = np.sum(echo_mask)
     
-    has_echo = echo_count >= threshold_count
-    return has_echo, int(echo_count)
+    # 計算最大 dBZ
+    max_dbz = 0
+    if echo_count > 0:
+        # 取出所有回波像素的 RGB
+        echo_pixels = sub_grid_int[:, :, :3][echo_mask]
+        
+        # 使用廣播計算所有像素與色碼表的歐幾里得距離
+        # echo_pixels shape: (N, 3), colors shape: (M, 3)
+        colors = np.array(list(DBZ_COLOR_MAP.keys()))
+        dbz_values = np.array(list(DBZ_COLOR_MAP.values()))
+        
+        # dists shape: (N, M)
+        dists = np.sum((echo_pixels[:, np.newaxis, :] - colors[np.newaxis, :, :]) ** 2, axis=2)
+        
+        # 找到每個像素最接近的色碼索引
+        min_dist_indices = np.argmin(dists, axis=1)
+        min_dists = np.min(dists, axis=1)
+        
+        # 過濾掉距離太遠的像素 (超過 5000 表示不是色碼表內的顏色)
+        valid_mask = min_dists < 5000
+        if np.any(valid_mask):
+            valid_indices = min_dist_indices[valid_mask]
+            max_dbz = int(np.max(dbz_values[valid_indices]))
 
-def append_history_log(obs_time, precip, radar_cover, radar_uncover, state_before, state_after):
+    has_echo = echo_count >= threshold_count
+    return has_echo, int(echo_count), max_dbz
+
+def append_history_log(obs_time, precip, radar_cover, radar_uncover, max_dbz_cover, max_dbz_uncover, state_before, state_after):
     file_exists = os.path.isfile(LOG_FILE)
     try:
         with open(LOG_FILE, mode='a', encoding='utf-8', newline='') as f:
             writer = csv.writer(f)
             if not file_exists:
-                writer.writerow(['觀測時間', '雨量', '加蓋半徑雷達點數', '解除半徑雷達點數', '執行前狀態', '執行後狀態', '判定結果'])
+                writer.writerow(['觀測時間', '雨量', '加蓋半徑點數', '解除半徑點數', '加蓋最大dBZ', '解除最大dBZ', '執行前狀態', '執行後狀態', '判定結果'])
             
             action = "維持原狀"
             if not state_before and state_after:
@@ -331,7 +371,7 @@ def append_history_log(obs_time, precip, radar_cover, radar_uncover, state_befor
             elif state_before and not state_after:
                 action = "發佈解除"
                 
-            writer.writerow([obs_time, precip, radar_cover, radar_uncover, state_before, state_after, action])
+            writer.writerow([obs_time, precip, radar_cover, radar_uncover, max_dbz_cover, max_dbz_uncover, state_before, state_after, action])
     except Exception as e:
         print(f"寫入歷史日誌失敗: {e}")
 
@@ -460,6 +500,8 @@ def main():
         has_radar_echo_uncover = False
         radar_pixels_cover = 0
         radar_pixels_uncover = 0
+        max_dbz_cover = 0
+        max_dbz_uncover = 0
         
         r_settings = config.get('radar_settings', {})
         cov_rad = r_settings.get('cover_radius_px', 28)
@@ -472,7 +514,7 @@ def main():
         
         try:
             if cwa_api_key:
-                has_radar_echo_cover, radar_pixels_cover = get_radar_echo(
+                has_radar_echo_cover, radar_pixels_cover, max_dbz_cover = get_radar_echo(
                     cwa_api_key, fact_x, fact_y, cov_rad, color_diff_thres, echo_pixel_thres_cov
                 )
                 has_radar_echo_uncover, radar_pixels_uncover = get_radar_echo(
@@ -491,14 +533,23 @@ def main():
         # 4. 核心邏輯判斷
         # 4.1 檢查是否有任何降雨訊號 (加蓋條件)
         # (已依照使用者要求移除天氣現象是否有雨字的判斷)
-        is_raining_phenomena = False
+        
+        # 新增雙軌邏輯：點數達標 OR 最大 dBZ 達標
+        max_dbz_thres_cov = config.get('radar_settings', {}).get('max_dbz_threshold_cover', 45)
+        cond_radar_dbz_cover = max_dbz_cover >= max_dbz_thres_cov
         
         # 滿足以下任一條件即判定為降雨 (加蓋帆布觸發)
         # 1. 雨量計顯示有雨 (>0 或 T)
-        # 2. 雷達回波 5km 內有降雨區
-        has_rain_now = is_raining_gauge or has_radar_echo_cover
+        # 2. 雷達回波 5km 內點數達標
+        # 3. 雷達回波 5km 內最大 dBZ 達標
+        has_rain_now = is_raining_gauge or has_radar_echo_cover or cond_radar_dbz_cover
         
-        radar_info = f"5km半徑內有回波 ({radar_pixels_cover}點)" if has_radar_echo_cover else "無回波"
+        radar_info = "無回波"
+        if radar_pixels_cover > 0:
+            radar_info = f"5km半徑內有回波 ({radar_pixels_cover}點, 最大 {max_dbz_cover} dBZ)"
+            if cond_radar_dbz_cover:
+                radar_info += " ⚠️達到暴雨標準"
+                
         info_header = (
             f"🔔【即時觀測數據】\n"
             f"📊 觀測時間：{obs_time}\n"
@@ -508,6 +559,8 @@ def main():
             f"🌐 資料來源：{source}\n"
             f"======================\n\n"
         )
+        
+        print(f"綜合判定: 測站雨量={is_raining_gauge} | 5km點數達標={has_radar_echo_cover} | 5kmdBZ達標={cond_radar_dbz_cover}")
         
         if has_rain_now:
             # 只要判定有降雨，就持續更新最後降雨時間
@@ -525,12 +578,12 @@ def main():
         else:
             if state['is_covered']:
                 # 4.2 檢查是否滿足解除加蓋條件 (必須全部滿足)
-                # 1. (已移除) 不再檢查天氣現象預報是否無雨
-                # 2. 雨量計判定無雨
+                # 1. 雨量計判定無雨
                 cond2 = not is_raining_gauge
-                # 3. 未來無降雨接近 (雷達回波 5km 內無降雨區)
-                cond3 = not has_radar_echo_uncover
-                # 4. 連續30分鐘無降雨 (最後一次下雨時間已過 1800 秒)
+                # 2. 未來無降雨接近 (雷達回波 5km 內點數小於 10，且最大 dBZ 小於 30)
+                max_dbz_thres_uncov = config.get('radar_settings', {}).get('max_dbz_threshold_uncover', 30)
+                cond3 = (not has_radar_echo_uncover) and (max_dbz_uncover < max_dbz_thres_uncov)
+                # 3. 連續30分鐘無降雨 (最後一次下雨時間已過 1800 秒)
                 last_rain = state.get('last_rain_time')
                 if last_rain is not None:
                     diff_seconds = current_time_ts - last_rain
@@ -541,7 +594,7 @@ def main():
                     cond4 = True
                     print("異常：沒有最後降雨時間紀錄，防呆預設允許解除。")
                 
-                print(f"解除條件檢查: 雨量計無雨={cond2} | 5km雷達無雨={cond3} | 已過30分鐘={cond4}")
+                print(f"解除條件檢查: 雨量計無雨={cond2} | 雷達雙軌無雨={cond3} | 已過30分鐘={cond4}")
                 
                 if cond2 and cond3 and cond4:
                     # 狀態轉移: 🔴 -> 🟢
@@ -558,7 +611,7 @@ def main():
         
         # 智慧過濾機制：只有在有回波、有降雨，或原本/現在處於加蓋狀態時才寫入日誌
         if radar_pixels_cover > 0 or radar_pixels_uncover > 0 or is_raining_gauge or state_before or state_after:
-            append_history_log(obs_time, precip, radar_pixels_cover, radar_pixels_uncover, state_before, state_after)
+            append_history_log(obs_time, precip, radar_pixels_cover, radar_pixels_uncover, max_dbz_cover, max_dbz_uncover, state_before, state_after)
             
         # 寫入狀態 (若被改變)
         save_json(STATE_FILE, state)

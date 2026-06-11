@@ -13,7 +13,9 @@
     "uncover_radius_px": 14,
     "echo_pixel_threshold_cover": 20,
     "echo_pixel_threshold_uncover": 10,
-    "color_diff_threshold": 20
+    "color_diff_threshold": 20,
+    "max_dbz_threshold_cover": 45,
+    "max_dbz_threshold_uncover": 30
   },
   "email": {
     "recipient": "fuyoung1006@gmail.com"
