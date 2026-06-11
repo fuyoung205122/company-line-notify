@@ -357,21 +357,15 @@ def get_radar_echo(api_key, factory_x, factory_y, radius_px, threshold_diff=20, 
     has_echo = echo_count >= threshold_count
     return has_echo, int(echo_count), max_dbz
 
-def append_history_log(obs_time, precip, radar_cover, radar_uncover, max_dbz_cover, max_dbz_uncover, state_before, state_after):
+def append_history_log(exec_time, precip, pixels_2km, pixels_5km, max_dbz, cond_cover, cond_uncover, action):
     file_exists = os.path.isfile(LOG_FILE)
     try:
         with open(LOG_FILE, mode='a', encoding='utf-8', newline='') as f:
             writer = csv.writer(f)
             if not file_exists:
-                writer.writerow(['觀測時間', '雨量', '加蓋半徑點數', '解除半徑點數', '加蓋最大dBZ', '解除最大dBZ', '執行前狀態', '執行後狀態', '判定結果'])
+                writer.writerow(['執行時間', '雨量值', '雷達點數(2km)', '雷達點數(5km)', '最大dBZ', '符合Cover條件', '符合Uncover條件', '最終通知結果'])
             
-            action = "維持原狀"
-            if not state_before and state_after:
-                action = "發佈加蓋"
-            elif state_before and not state_after:
-                action = "發佈解除"
-                
-            writer.writerow([obs_time, precip, radar_cover, radar_uncover, max_dbz_cover, max_dbz_uncover, state_before, state_after, action])
+            writer.writerow([exec_time, precip, pixels_2km, pixels_5km, max_dbz, cond_cover, cond_uncover, action])
     except Exception as e:
         print(f"寫入歷史日誌失敗: {e}")
 
@@ -500,6 +494,7 @@ def main():
         has_radar_echo_uncover = False
         radar_pixels_cover = 0
         radar_pixels_uncover = 0
+        radar_pixels_2km = 0
         max_dbz_cover = 0
         max_dbz_uncover = 0
         
@@ -514,10 +509,14 @@ def main():
         
         try:
             if cwa_api_key:
+                # 取得 2km 回波資料供記錄使用
+                _, radar_pixels_2km, _ = get_radar_echo(
+                    cwa_api_key, fact_x, fact_y, 6, color_diff_thres, 1
+                )
                 has_radar_echo_cover, radar_pixels_cover, max_dbz_cover = get_radar_echo(
                     cwa_api_key, fact_x, fact_y, cov_rad, color_diff_thres, echo_pixel_thres_cov
                 )
-                has_radar_echo_uncover, radar_pixels_uncover = get_radar_echo(
+                has_radar_echo_uncover, radar_pixels_uncover, max_dbz_uncover = get_radar_echo(
                     cwa_api_key, fact_x, fact_y, uncov_rad, color_diff_thres, echo_pixel_thres_uncov
                 )
                 print(f"雷達回波檢測: 5km半徑內是否有回波: {has_radar_echo_cover} (回波點數: {radar_pixels_cover}) | 5km半徑內是否有回波: {has_radar_echo_uncover} (回波點數: {radar_pixels_uncover})")
@@ -609,9 +608,34 @@ def main():
                     
         state_after = state['is_covered']
         
-        # 智慧過濾機制：只有在有回波、有降雨，或原本/現在處於加蓋狀態時才寫入日誌
-        if radar_pixels_cover > 0 or radar_pixels_uncover > 0 or is_raining_gauge or state_before or state_after:
-            append_history_log(obs_time, precip, radar_pixels_cover, radar_pixels_uncover, max_dbz_cover, max_dbz_uncover, state_before, state_after)
+        # 決定動作字串
+        action = "維持現狀"
+        if not state_before and state_after:
+            action = "發佈加蓋"
+        elif state_before and not state_after:
+            action = "發佈解除"
+            
+        # 計算是否符合解除條件 (作為紀錄)
+        cond_uncover = False
+        if state_before:
+            max_dbz_thres_uncov = config.get('radar_settings', {}).get('max_dbz_threshold_uncover', 30)
+            if not is_raining_gauge and (not has_radar_echo_uncover) and (max_dbz_uncover < max_dbz_thres_uncov):
+                last_rain = state.get('last_rain_time')
+                if last_rain is None or (current_time_ts - last_rain) >= 1800:
+                    cond_uncover = True
+                    
+        # 使用者要求：每次執行皆記錄
+        exec_time = now.strftime('%Y-%m-%d %H:%M:%S')
+        append_history_log(
+            exec_time, 
+            precip, 
+            radar_pixels_2km, 
+            radar_pixels_cover, 
+            max_dbz_cover, 
+            has_rain_now, 
+            cond_uncover, 
+            action
+        )
             
         # 寫入狀態 (若被改變)
         save_json(STATE_FILE, state)
