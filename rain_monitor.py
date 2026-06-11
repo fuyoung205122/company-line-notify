@@ -12,12 +12,14 @@ import traceback
 import io
 from PIL import Image
 import numpy as np
+import csv
 
 # 檔案路徑設定
 DIR_PATH = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(DIR_PATH, "config.json")
 STATE_FILE = os.path.join(DIR_PATH, "state.json")
 SECRETS_FILE = os.path.join(DIR_PATH, "secrets.json")
+LOG_FILE = os.path.join(DIR_PATH, "history_log.csv")
 
 # 讀取本機 secrets.json 作為環境變數的備援
 SECRETS = {}
@@ -315,6 +317,24 @@ def get_radar_echo(api_key, factory_x, factory_y, radius_px, threshold_diff=20, 
     has_echo = echo_count >= threshold_count
     return has_echo, int(echo_count)
 
+def append_history_log(obs_time, precip, radar_cover, radar_uncover, state_before, state_after):
+    file_exists = os.path.isfile(LOG_FILE)
+    try:
+        with open(LOG_FILE, mode='a', encoding='utf-8', newline='') as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(['觀測時間', '雨量', '加蓋半徑雷達點數', '解除半徑雷達點數', '執行前狀態', '執行後狀態', '判定結果'])
+            
+            action = "維持原狀"
+            if not state_before and state_after:
+                action = "發佈加蓋"
+            elif state_before and not state_after:
+                action = "發佈解除"
+                
+            writer.writerow([obs_time, precip, radar_cover, radar_uncover, state_before, state_after, action])
+    except Exception as e:
+        print(f"寫入歷史日誌失敗: {e}")
+
 def main():
     try:
         # 讀取設定檔
@@ -466,6 +486,8 @@ def main():
         
         current_time_ts = now.timestamp()
         
+        state_before = state['is_covered']
+        
         # 4. 核心邏輯判斷
         # 4.1 檢查是否有任何降雨訊號 (加蓋條件)
         # (已依照使用者要求移除天氣現象是否有雨字的判斷)
@@ -532,6 +554,12 @@ def main():
                     # 狀態鎖定: 🔴
                     print("未滿足所有解除條件，保持加蓋狀態。")
                     
+        state_after = state['is_covered']
+        
+        # 智慧過濾機制：只有在有回波、有降雨，或原本/現在處於加蓋狀態時才寫入日誌
+        if radar_pixels_cover > 0 or radar_pixels_uncover > 0 or is_raining_gauge or state_before or state_after:
+            append_history_log(obs_time, precip, radar_pixels_cover, radar_pixels_uncover, state_before, state_after)
+            
         # 寫入狀態 (若被改變)
         save_json(STATE_FILE, state)
         print("本次檢查結束。")
