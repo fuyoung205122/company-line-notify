@@ -458,7 +458,7 @@ def main():
                 has_radar_echo_uncover, radar_pixels_uncover = get_radar_echo(
                     cwa_api_key, fact_x, fact_y, uncov_rad, color_diff_thres, echo_pixel_thres_uncov
                 )
-                print(f"雷達回波檢測: 2km半徑內是否有回波: {has_radar_echo_cover} (回波點數: {radar_pixels_cover}) | 5km半徑內是否有回波: {has_radar_echo_uncover} (回波點數: {radar_pixels_uncover})")
+                print(f"雷達回波檢測: 5km半徑內是否有回波: {has_radar_echo_cover} (回波點數: {radar_pixels_cover}) | 5km半徑內是否有回波: {has_radar_echo_uncover} (回波點數: {radar_pixels_uncover})")
             else:
                 print("未設定 CWA_API_KEY，跳過雷達回波檢查。")
         except Exception as e:
@@ -473,10 +473,10 @@ def main():
         
         # 滿足以下任一條件即判定為降雨 (加蓋帆布觸發)
         # 1. 雨量計顯示有雨 (>0 或 T)
-        # 2. 雷達回波 2km 內有降雨區
+        # 2. 雷達回波 5km 內有降雨區
         has_rain_now = is_raining_gauge or has_radar_echo_cover
         
-        radar_info = f"2km半徑內有回波 ({radar_pixels_cover}點)" if has_radar_echo_cover else "無回波"
+        radar_info = f"5km半徑內有回波 ({radar_pixels_cover}點)" if has_radar_echo_cover else "無回波"
         info_header = (
             f"🔔【即時觀測數據】\n"
             f"📊 觀測時間：{obs_time}\n"

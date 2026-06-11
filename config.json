@@ -9,10 +9,10 @@
     "factory_pixel_y": 1941
   },
   "radar_settings": {
-    "cover_radius_px": 6,
+    "cover_radius_px": 14,
     "uncover_radius_px": 14,
-    "echo_pixel_threshold_cover": 55,
-    "echo_pixel_threshold_uncover": 40,
+    "echo_pixel_threshold_cover": 20,
+    "echo_pixel_threshold_uncover": 10,
     "color_diff_threshold": 20
   },
   "email": {
