@@ -10,7 +10,7 @@
 - **依賴外部服務**：
   - **主要天氣源**：中華民國中央氣象署 API (包含 `O-A0002-001` 雨量計、`O-A0003-001` 天氣現象、`O-A0058-001` 雷達回波圖分析)。
   - **備援天氣源**：Open-Meteo API (當氣象署 API 斷線或異常時自動切換)。
-  - **網頁代管**：GitHub Pages (後續預計轉移至 Vercel)。
+  - **網頁代管**：GitHub Pages (專案已設為 Public，直接利用 `fuyoung205122.github.io/company-line-notify/` 靜態發布)。
   - **Gmail SMTP**：系統發生例外錯誤時，寄送 Email 警告信給管理員。
 
 ---
