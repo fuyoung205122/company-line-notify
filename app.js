@@ -43,12 +43,12 @@ function updateDashboard(data, historyCsv) {
         heartbeatDotHtml = '<span class="status-dot red heartbeat"></span>';
         sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 系統異常`;
         sysDelay.innerText = `錯誤：${data.error_message}`;
-    } else if (diffMins >= 30) {
+    } else if (diffMins >= 40) {
         sysCard.className = 'health-card error';
         heartbeatDotHtml = '<span class="status-dot red"></span>';
         sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 系統異常`;
         sysDelay.innerText = `資料已超過 ${diffMins} 分鐘未更新，排程可能已停止`;
-    } else if (diffMins >= 15) {
+    } else if (diffMins >= 25) {
         sysCard.className = 'health-card warning';
         heartbeatDotHtml = '<span class="status-dot yellow heartbeat"></span>';
         sysTitle.innerHTML = `${heartbeatDotHtml} 🟡 資料延遲`;
