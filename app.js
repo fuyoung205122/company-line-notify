@@ -26,7 +26,9 @@ function updateDashboard(data, historyCsv) {
     const isCovered = data.is_covered;
     
     // Calculate delay
-    const updateTime = new Date(timeStr.replace(/-/g, '/'));
+    const updateTime = new Date(
+        timeStr.replace(' ', 'T')
+    );
     const now = new Date();
     const diffMs = now - updateTime;
     const diffMins = Math.floor(diffMs / 60000);
