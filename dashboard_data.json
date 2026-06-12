@@ -1,0 +1,14 @@
+{
+  "last_update": "2026-06-12 21:00:00",
+  "is_covered": false,
+  "rainfall": "--",
+  "radar_pixels": 0,
+  "max_dbz": 0,
+  "weather_description": "等待更新中",
+  "source": "系統初始化",
+  "reasons": [
+    "系統正在等待下一次排程更新，請稍候..."
+  ],
+  "system_status": "error",
+  "error_message": "V2 架構初始化中，資料將於幾分鐘內自動補齊"
+}

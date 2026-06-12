@@ -57,4 +57,5 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add state.json
           if [ -f history_log.csv ]; then git add history_log.csv; fi
+          if [ -f dashboard_data.json ]; then git add dashboard_data.json; fi
           git diff --quiet && git diff --staged --quiet || (git commit -m "chore: auto-update state and logs [skip ci]" && git push)
