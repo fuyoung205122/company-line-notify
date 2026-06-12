@@ -1,3 +1,5 @@
+let currentLastUpdate = null;
+
 async function fetchData() {
     try {
         const timestamp = new Date().getTime();
@@ -9,7 +11,14 @@ async function fetchData() {
         const dashboardData = await dashRes.json();
         const historyText = await historyRes.text();
         
-        updateDashboard(dashboardData, historyText);
+        let isNewData = false;
+        if (currentLastUpdate !== dashboardData.last_update) {
+            currentLastUpdate = dashboardData.last_update;
+            isNewData = true;
+            updateDashboard(dashboardData, historyText);
+        }
+        
+        return { success: true, isNewData: isNewData };
     } catch (error) {
         console.error("Error fetching data:", error);
         document.getElementById('status-title').innerText = "連線異常";
@@ -18,6 +27,8 @@ async function fetchData() {
         const sysCard = document.getElementById('sys-status-card');
         sysCard.className = 'health-card error';
         document.getElementById('sys-status-title').innerHTML = '<span class="status-dot red"></span> 🔴 系統連線失敗';
+        
+        return { success: false, isNewData: false };
     }
 }
 
@@ -183,3 +194,32 @@ fetchData();
 
 // Auto refresh every 5 minutes
 setInterval(fetchData, 5 * 60 * 1000);
+
+async function forceRefresh() {
+    const btn = document.getElementById('refresh-btn');
+    const status = document.getElementById('refresh-status');
+
+    btn.disabled = true;
+    btn.innerText = '更新中...';
+    status.innerText = '正在取得最新資料';
+
+    try {
+        const result = await fetchData();
+        if (result.success) {
+            if (result.isNewData) {
+                status.innerText = '✅ 更新完成 ' + new Date().toLocaleTimeString();
+            } else {
+                status.innerText = '⚠️ 目前尚無新資料';
+            }
+        } else {
+            status.innerText = '❌ 更新失敗';
+        }
+    } catch (err) {
+        status.innerText = '❌ 更新失敗';
+    }
+
+    btn.disabled = false;
+    btn.innerText = '🔄 立即更新';
+}
+
+document.getElementById('refresh-btn').addEventListener('click', forceRefresh);
