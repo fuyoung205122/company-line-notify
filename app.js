@@ -74,7 +74,9 @@ function updateDashboard(data, historyCsv) {
     
     // Calculate health status
     const healthStatusEl = document.getElementById('sys-health-status');
-    if (data.success_rate && data.success_rate !== '--' && data.success_rate !== '0%') {
+    if (data.total_runs !== undefined && data.total_runs < 10) {
+        healthStatusEl.innerText = '🟢 蒐集中';
+    } else if (data.success_rate && data.success_rate !== '--' && data.success_rate !== '0%') {
         const rate = parseFloat(data.success_rate);
         if (rate >= 99) {
             healthStatusEl.innerText = '🟢 優秀';

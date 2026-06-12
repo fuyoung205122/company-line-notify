@@ -399,8 +399,8 @@ def main():
                 weather_description, _ = get_weather_description(station_id, cwa_api_key)
                 print(f"氣象署測站天氣現象描述: '{weather_description}'")
             else:
-                weather_description = "Open-Meteo 備援模式"
-                print("未設定 CWA_API_KEY，切換為 Open-Meteo 備援模式。")
+                weather_description = "備援資料源運作中"
+                print("未設定 CWA_API_KEY，切換為備援模式。")
         except Exception as e:
             print(f"警告：讀取氣象署天氣現象描述失敗: {e}")
             
@@ -578,10 +578,17 @@ def main():
             reason_str
         )
             
+        # 如果上一次是 error，這次恢復 normal，則重置統計
+        if state.get('last_status') == 'error':
+            print("系統從異常恢復正常，重置健康度統計。")
+            state['total_runs'] = 0
+            state['successful_runs'] = 0
+
         # 寫入狀態 (若被改變)
         state['total_runs'] = state.get('total_runs', 0) + 1
         state['successful_runs'] = state.get('successful_runs', 0) + 1
         state['last_success_time'] = exec_time
+        state['last_status'] = 'normal'
         save_json(STATE_FILE, state)
         
         duration_sec = round(time.time() - start_time_ts, 2)
@@ -623,6 +630,7 @@ def main():
         try:
             state = load_json(STATE_FILE)
             state['total_runs'] = state.get('total_runs', 0) + 1
+            state['last_status'] = 'error'
             save_json(STATE_FILE, state)
             
             tw_tz = pytz.timezone('Asia/Taipei')
