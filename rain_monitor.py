@@ -20,6 +20,7 @@ CONFIG_FILE = os.path.join(DIR_PATH, "config.json")
 STATE_FILE = os.path.join(DIR_PATH, "state.json")
 SECRETS_FILE = os.path.join(DIR_PATH, "secrets.json")
 LOG_FILE = os.path.join(DIR_PATH, "history_log.csv")
+DASHBOARD_FILE = os.path.join(DIR_PATH, "dashboard_data.json")
 
 # 氣象署雷達 dBZ 色階對應表 (近似值)
 DBZ_COLOR_MAP = {
@@ -357,15 +358,15 @@ def get_radar_echo(api_key, factory_x, factory_y, radius_px, threshold_diff=20, 
     has_echo = echo_count >= threshold_count
     return has_echo, int(echo_count), max_dbz
 
-def append_history_log(exec_time, precip, pixels_2km, pixels_5km, max_dbz, cond_cover, cond_uncover, action):
+def append_history_log(exec_time, precip, pixels_2km, pixels_5km, max_dbz, cond_cover, cond_uncover, action, reason):
     file_exists = os.path.isfile(LOG_FILE)
     try:
         with open(LOG_FILE, mode='a', encoding='utf-8', newline='') as f:
             writer = csv.writer(f)
             if not file_exists:
-                writer.writerow(['執行時間', '雨量值', '雷達點數(2km)', '雷達點數(5km)', '最大dBZ', '符合Cover條件', '符合Uncover條件', '最終通知結果'])
+                writer.writerow(['執行時間', '雨量值', '雷達點數(2km)', '雷達點數(5km)', '最大dBZ', '符合Cover條件', '符合Uncover條件', '最終通知結果', '原因'])
             
-            writer.writerow([exec_time, precip, pixels_2km, pixels_5km, max_dbz, cond_cover, cond_uncover, action])
+            writer.writerow([exec_time, precip, pixels_2km, pixels_5km, max_dbz, cond_cover, cond_uncover, action, reason])
     except Exception as e:
         print(f"寫入歷史日誌失敗: {e}")
 
@@ -543,6 +544,22 @@ def main():
         # 3. 雷達回波 5km 內最大 dBZ 達標
         has_rain_now = is_raining_gauge or has_radar_echo_cover or cond_radar_dbz_cover
         
+        current_reasons = []
+        if is_raining_gauge:
+            current_reasons.append("☑ 測站有雨")
+        if has_radar_echo_cover:
+            current_reasons.append(f"☑ 雷達回波達標 ({radar_pixels_cover}點)")
+        if cond_radar_dbz_cover:
+            current_reasons.append(f"☑ 最大 dBZ 達標 ({max_dbz_cover}dBZ)")
+            
+        if not has_rain_now:
+            current_reasons = [
+                "☑ 雨量 = 0",
+                "☑ 雷達回波低於門檻",
+                "☑ dBZ 低於門檻",
+                "因此判定暫不需加蓋"
+            ]
+        
         radar_info = "無回波"
         if radar_pixels_cover > 0:
             radar_info = f"5km半徑內有回波 ({radar_pixels_cover}點, 最大 {max_dbz_cover} dBZ)"
@@ -602,9 +619,21 @@ def main():
                     send_to_all_line_groups(full_msg, line_token, line_group, enable_line)
                     state['is_covered'] = False
                     state['last_rain_time'] = None
+                    current_reasons = [
+                        "☑ 測站無雨",
+                        "☑ 雷達回波無雲層接近",
+                        "☑ 已連續 30 分鐘無降雨",
+                        "因此滿足解除加蓋條件"
+                    ]
                 else:
                     # 狀態鎖定: 🔴
                     print("未滿足所有解除條件，保持加蓋狀態。")
+                    uncover_reasons = []
+                    if not cond2: uncover_reasons.append("☒ 測站仍有雨")
+                    if not cond3: uncover_reasons.append("☒ 雷達回波仍有雲層接近")
+                    if not cond4: uncover_reasons.append(f"☒ 停雨未滿 30 分鐘 (已停 {diff_minutes:.1f} 分)")
+                    uncover_reasons.append("因此不滿足解除條件，維持加蓋")
+                    current_reasons = uncover_reasons
                     
         state_after = state['is_covered']
         
@@ -626,6 +655,7 @@ def main():
                     
         # 使用者要求：每次執行皆記錄
         exec_time = now.strftime('%Y-%m-%d %H:%M:%S')
+        reason_str = " + ".join(current_reasons)
         append_history_log(
             exec_time, 
             precip, 
@@ -634,16 +664,54 @@ def main():
             max_dbz_cover, 
             has_rain_now, 
             cond_uncover, 
-            action
+            action,
+            reason_str
         )
             
         # 寫入狀態 (若被改變)
         save_json(STATE_FILE, state)
+        
+        # 寫入 V2 Dashboard 資料
+        dashboard_data = {
+            "last_update": exec_time,
+            "is_covered": state['is_covered'],
+            "rainfall": precip,
+            "radar_pixels": radar_pixels_cover,
+            "max_dbz": max_dbz_cover,
+            "weather_description": weather_description,
+            "source": source,
+            "reasons": current_reasons,
+            "system_status": "normal",
+            "error_message": ""
+        }
+        save_json(DASHBOARD_FILE, dashboard_data)
+        
         print("本次檢查結束。")
 
     except Exception as e:
         error_msg = traceback.format_exc()
         print(f"發生未預期錯誤:\n{error_msg}")
+        
+        # 嘗試寫入系統異常狀態到 dashboard_data.json
+        try:
+            tw_tz = pytz.timezone('Asia/Taipei')
+            now_err = datetime.datetime.now(tw_tz).strftime('%Y-%m-%d %H:%M:%S')
+            err_data = {
+                "last_update": now_err,
+                "is_covered": False,
+                "rainfall": "--",
+                "radar_pixels": 0,
+                "max_dbz": 0,
+                "weather_description": "未知",
+                "source": "未知",
+                "reasons": ["系統發生內部錯誤", str(e)],
+                "system_status": "error",
+                "error_message": str(e)
+            }
+            save_json(DASHBOARD_FILE, err_data)
+        except:
+            pass
+            
         try:
             config = load_json(CONFIG_FILE)
             send_error_email(error_msg, config)

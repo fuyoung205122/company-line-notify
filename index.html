@@ -11,8 +11,13 @@
     <div class="glass-container">
         <header>
             <h1>廠區降雨監控系統</h1>
-            <p id="last-update">最後更新時間: 載入中...</p>
         </header>
+
+        <section class="system-status-card" id="sys-status-card">
+            <h3 id="sys-status-title">系統狀態：連線中...</h3>
+            <p id="sys-last-update">最後更新：載入中</p>
+            <p id="sys-delay">資料延遲：--</p>
+        </section>
 
         <section class="status-card" id="status-card">
             <h2 id="status-title">狀態判定中...</h2>
@@ -32,11 +37,21 @@
                 <h3>⚡ 最大強度</h3>
                 <p id="val-dbz">-- dBZ</p>
             </div>
+            <div class="detail-card">
+                <h3>📝 天氣現象</h3>
+                <p id="val-weather">--</p>
+            </div>
+            <div class="detail-card">
+                <h3>🌐 資料來源</h3>
+                <p id="val-source" style="font-size: 1rem; margin-top: 0.5rem;">--</p>
+            </div>
         </section>
 
         <section class="reason-card">
             <h3>判斷依據</h3>
-            <p id="val-reason">載入中...</p>
+            <ul id="val-reason-list" class="reason-list">
+                <li>載入中...</li>
+            </ul>
         </section>
         
         <section class="history-section">
@@ -50,6 +65,7 @@
                             <th>雷達(5km)</th>
                             <th>最大dBZ</th>
                             <th>結果</th>
+                            <th>判斷依據</th>
                         </tr>
                     </thead>
                     <tbody>

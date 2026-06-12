@@ -1,58 +1,52 @@
 # 🌧️ 專案重要記憶與背景上下文 (AI Context)
 
 這份檔案紀錄了「廠區天氣廣播」專案的最新核心架構與重要邏輯，旨在幫助 AI 在新的對話中能快速接手開發。
+目前已升級為 **V2 雙軌並行、前端檢核架構**。
 
 ---
 
 ## 📌 專案架構
-- **核心目標**：定時監控台南市安南區的天氣，將結果輸出至 GitHub 並透過 **Web Dashboard 靜態網頁**提供現場人員隨時查看是否需要加蓋帆布（LINE 通知已依需求停用）。
+- **核心目標**：定時監控台南市安南區的天氣，將結果輸出至 GitHub 並透過 **Web Dashboard 靜態網頁** 作為唯一真理來源，提供現場人員隨時查看是否需要加蓋帆布（LINE 通知已依需求停用）。
 - **運行環境**：部署於 GitHub 儲存庫 (`fuyoung205122/company-line-notify`)，透過 GitHub Actions 排程定時執行（每 10 分鐘一次，避開整點：於每小時的 2, 12, 22, 32, 42, 52 分啟動）。
 - **依賴外部服務**：
-  - **主要天氣源**：中華民國中央氣象署 API (包含 `O-A0002-001` 雨量計、`O-A0003-001` 天氣現象、`O-A0058-001` 雷達回波圖分析)。
-  - **備援天氣源**：Open-Meteo API (當氣象署 API 斷線或異常時自動切換)。
-  - **網頁代管**：GitHub Pages (專案已設為 Public，直接利用 `fuyoung205122.github.io/company-line-notify/` 靜態發布)。
+  - **主要天氣源**：中華民國中央氣象署 API。
+  - **備援天氣源**：Open-Meteo API。
+  - **網頁代管**：GitHub Pages。
   - **Gmail SMTP**：系統發生例外錯誤時，寄送 Email 警告信給管理員。
 
 ---
 
 ## 📂 核心檔案說明
-- `rain_monitor.py`：主程式邏輯，包含氣象數據抓取、雷達圖像素分析（numpy 遮罩計算）、時間與假日判斷、狀態比對及日誌紀錄。
-- `config.json`：存放地理位置（經緯度、測站與雷達畫素座標）、錯誤通知收件人、**東陽 2026 行事曆設定**以及 `enable_line_notifications` (目前設為 false)。
-- `state.json`：紀錄機器人當前狀態，包含 `is_covered` (目前是否判定為蓋上帆布狀態)、`last_rain_time` (最後一次下雨的時間戳記) 及 `last_reset_date` (最後一次跨日重置的日期)。
-- `index.html` / `app.js` / `style.css`：V2 新增的 Web Dashboard 前端靜態網頁，直接讀取 `state.json` 與 `history_log.csv` 顯示即時動態與歷史紀錄。
-- `test_rain_monitor.py`：本地單元測試腳本，使用 Python 內建 unittest 庫，可在不上傳 GitHub 的情況下直接測試 API 模擬與 JSON 解析。
-- `.github/workflows/monitor.yml`：定義 GitHub Actions 執行排程與環境變數注入.
-- `system_architecture.md`：系統架構圖說明文件，內含 Mermaid 架構圖。
-- `system_architecture.mermaid`：Mermaid 格式的系統架構圖定義檔。
-- `2026年東陽行事曆_copy.pdf`：東陽 2026 官方行事曆參考文件。
+- `rain_monitor.py`：主程式邏輯，包含氣象數據抓取、雷達圖像素分析、時間假日判斷，並產生 `dashboard_data.json` 與寫入歷史紀錄。
+- `config.json`：存放地理位置、信件收件人、東陽 2026 行事曆設定及相關門檻。
+- `state.json`：紀錄機器人當前狀態，包含 `is_covered`、`last_rain_time` 及每日跨日重置的日期。
+- `dashboard_data.json`：**V2 新增**，前端 Dashboard 的單一真理來源，包含即時狀態、各項數據與完整判斷依據 (reasons)。
+- `history_log.csv`：歷史紀錄檔，包含所有判定數據及判斷原因（第 9 欄）。
+- `index.html` / `app.js` / `style.css`：V2 新增的前端靜態網頁，負責渲染 `dashboard_data.json`，並內建時間衰變檢測防呆機制。
+- `test_rain_monitor.py`：本地單元測試腳本。
+- `.github/workflows/monitor.yml`：定義 GitHub Actions 執行排程。
 
 ---
 
 ## ⚙️ 關鍵業務邏輯與規則
-1. **運作時間**：僅在 **07:30 到 19:30** 之間進行檢查。
-2. **假日排除規則**：
-   - 預設排除週末（週六、週日不執行）。
-   - **東陽行事曆**：自 `config.json` 的 `calendar_2026` 欄位讀取，排除所有國定連續假日，但對 12/19 (六) 現場補班日特例放行。
-### 3. 下雨（加蓋帆布）判定
-系統每 15 分鐘執行一次，滿足以下任一條件即判定為降雨，並發送 `cover` 通知：
-1. **雨量計顯示有雨**：安南測站雨量大於 0 或為 T (微量)。
-2. **雷達回波大範圍降雨**：5km 半徑內，回波像素點數 >= 10（`echo_pixel_threshold_cover`）。
-3. **雷達回波強烈微爆流**：5km 半徑內，即使範圍極小，只要「最大 dBZ」>= 35（`max_dbz_threshold_cover`，通常對應黃色大雨）。
-
-### 4. 停雨（解除加蓋）判定
-目前處於「加蓋」狀態時，必須 **同時滿足** 以下三個條件，才會解除加蓋並發送 `uncover` 通知：
-1. **雨量計無雨**：安南測站雨量為 0。
-2. **雷達回波無雲層接近**：5km 半徑內，回波像素點數 < 5（`echo_pixel_threshold_uncover`），且最大 dBZ < 30（`max_dbz_threshold_uncover`）。
-3. **持續停雨 30 分鐘**：距離最後一次判定為下雨的時間，必須超過 1800 秒。
-4. **狀態重置**：每日跨日後第一次執行時，會自動將 `state.json` 恢復初始狀態，確保當日重新開始計算。
-
-### 5. 全紀錄觀測日誌 (歷史回溯機制)
-為了未來能科學化回溯與精準調校參數，系統 **每一次執行** 皆會寫入一筆完整的觀測紀錄至 `history_log.csv`，不再受限於智能過濾。
-- **紀錄欄位**包含：`執行時間`, `雨量值`, `雷達點數(2km)`, `雷達點數(5km)`, `最大dBZ`, `符合Cover條件`, `符合Uncover條件`, `最終通知結果`。
+1. **運作時間**：07:30 到 19:30 之間進行檢查，排除週末與東陽行事曆國定假日。
+2. **下雨（加蓋帆布）判定**：滿足以下任一條件即判定為降雨：
+   - 雨量計顯示有雨（>0 或 T）。
+   - 雷達回波 5km 內點數 >= 10。
+   - 雷達回波 5km 內最大 dBZ >= 45（以 config 設定為準）。
+3. **停雨（解除加蓋）判定**：處於「加蓋」狀態時，必須 **同時滿足** 以下三個條件才會解除：
+   - 雨量計無雨。
+   - 雷達回波無雲層接近（點數與 dBZ 低於解除門檻）。
+   - 持續停雨 30 分鐘（距離最後一次下雨超過 1800 秒）。
+4. **全紀錄觀測日誌**：每一次執行皆寫入一筆完整紀錄至 `history_log.csv`，並附加「判斷原因」文字。
+5. **前端時間延遲檢測 (Time Decay Detection)**：前端 `app.js` 會自動比較 `dashboard_data.json` 的更新時間與當前時間：
+   - **0~15 分鐘**：🟢 正常運作。
+   - **15~30 分鐘**：🟡 資料延遲 (排程可能壅塞)。
+   - **30 分鐘以上**：🔴 系統異常 (排程可能已停止)。
 
 ---
 
-## 🗺️ 系統架構圖
+## 🗺️ V2 雙軌並行系統架構圖
 
 ```mermaid
 graph TD
@@ -60,30 +54,26 @@ graph TD
     Exec -->|1. 讀取| Config[(config.json)]
     Exec -->|2. 讀取| State[(state.json)]
     Exec -->|3. GET 數據| CWA[中央氣象署 API]
+    CWA -.->|失敗時切換| OpenMeteo[Open-Meteo 備援]
     
-    CWA -->|傳回雨量、天氣描述、雷達圖| Exec
+    CWA -->|回傳資料| Exec
+    OpenMeteo -->|回傳資料| Exec
+
+    Exec -->|4. 寫入| History[(history_log.csv)]
+    Exec -->|5. 寫入| StateOut[(state.json)]
+    Exec -->|6. 產生並寫入| DashData[(dashboard_data.json)]
     
-    Exec -->|判定有雨| LINE[LINE Messaging API]
-    Exec -->|判定雨停滿30分且雷達乾淨| LINE
+    History -->|Git Push| GitHub[GitHub 儲存庫]
+    StateOut -->|Git Push| GitHub
+    DashData -->|Git Push| GitHub
     
-    LINE -->|傳送推播| Users[同仁 LINE 群組]
-    
-    Exec -->|異常報錯| Gmail[Gmail SMTP]
-    Gmail -->|發送郵件| Admin[管理員信箱]
-    
-    Exec -->|4. 自動更新狀態| State
-    State -->|Git Push| GitHub[GitHub 儲存庫]
+    GitHub -->|自動部署| Pages[GitHub Pages]
+    Pages -->|前端讀取解析| Dashboard[Web Dashboard UI]
 ```
 
 ---
 
 ## 🛡️ 系統穩定性機制
-- **API 請求逾時處理**：所有呼叫外部 API (`requests.post`, `requests.get`) 皆加上 `timeout=10`，避免服務卡死。
-- **手動覆蓋開關**：設定檔內有 `enable_line_notifications` 參數，可於緊急狀況時暫停 LINE 推播。
-
-## 🔑 環境變數 (Secrets)
-開發或測試時需確保 GitHub Secrets 或本地 `secrets.json` 中配置有以下變數：
-- `LINE_CHANNEL_ACCESS_TOKEN`：LINE 官方帳號 Token
-- `LINE_GROUP_ID`：發送目標群組 ID (支援逗號分隔多群組)
-- `CWA_API_KEY`：中央氣象署開放資料 API 金鑰
-- `GMAIL_USER` / `GMAIL_APP_PASSWORD`：報警信件發送帳號與應用程式密碼
+- **API 請求逾時處理**：外部 API 皆加上 `timeout`。
+- **錯誤捕捉與前端報警**：當腳本發生 Exception，會寫入帶有 `error` 狀態的 `dashboard_data.json`，讓前端立即顯示錯誤。
+- **信件通報**：發生嚴重錯誤時發送 Gmail 通知給管理員。

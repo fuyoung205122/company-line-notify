@@ -1,39 +1,59 @@
 async function fetchData() {
     try {
-        // Fetch state and history concurrently (cache busting with timestamp)
         const timestamp = new Date().getTime();
-        const [stateRes, historyRes] = await Promise.all([
-            fetch(`state.json?t=${timestamp}`),
+        const [dashRes, historyRes] = await Promise.all([
+            fetch(`dashboard_data.json?t=${timestamp}`),
             fetch(`history_log.csv?t=${timestamp}`)
         ]);
 
-        const stateData = await stateRes.json();
+        const dashboardData = await dashRes.json();
         const historyText = await historyRes.text();
         
-        updateDashboard(stateData, historyText);
+        updateDashboard(dashboardData, historyText);
     } catch (error) {
         console.error("Error fetching data:", error);
         document.getElementById('status-title').innerText = "連線異常";
         document.getElementById('status-subtitle').innerText = "無法取得最新狀態，請稍後再試。";
+        
+        const sysCard = document.getElementById('sys-status-card');
+        sysCard.className = 'system-status-card error';
+        document.getElementById('sys-status-title').innerText = '🔴 系統連線失敗';
     }
 }
 
-function updateDashboard(state, historyCsv) {
-    // Parse CSV
-    const rows = historyCsv.trim().split('\n').slice(1); // skip header
-    if (rows.length === 0) return;
+function updateDashboard(data, historyCsv) {
+    const timeStr = data.last_update;
+    const isCovered = data.is_covered;
     
-    // Get latest row
-    const latestRow = rows[rows.length - 1].split(',');
-    // 執行時間,雨量值,雷達點數(2km),雷達點數(5km),最大dBZ,符合Cover條件,符合Uncover條件,最終通知結果
-    const time = latestRow[0];
-    const rain = latestRow[1];
-    const radar5km = latestRow[3];
-    const maxDbz = latestRow[4];
-    const isCovered = state.is_covered;
+    // Calculate delay
+    const updateTime = new Date(timeStr.replace(/-/g, '/'));
+    const now = new Date();
+    const diffMs = now - updateTime;
+    const diffMins = Math.floor(diffMs / 60000);
     
-    // Update Header
-    document.getElementById('last-update').innerText = `最後更新時間: ${time}`;
+    const sysCard = document.getElementById('sys-status-card');
+    const sysTitle = document.getElementById('sys-status-title');
+    const sysDelay = document.getElementById('sys-delay');
+    
+    document.getElementById('sys-last-update').innerText = `最後更新：${timeStr}`;
+    
+    if (data.system_status === 'error') {
+        sysCard.className = 'system-status-card error';
+        sysTitle.innerText = '🔴 系統異常';
+        sysDelay.innerText = `錯誤：${data.error_message}`;
+    } else if (diffMins >= 30) {
+        sysCard.className = 'system-status-card error';
+        sysTitle.innerText = '🔴 系統異常';
+        sysDelay.innerText = `資料已超過 ${diffMins} 分鐘未更新，排程可能已停止`;
+    } else if (diffMins >= 15) {
+        sysCard.className = 'system-status-card warning';
+        sysTitle.innerText = '🟡 資料延遲';
+        sysDelay.innerText = `資料延遲：${diffMins} 分鐘 (排程可能壅塞)`;
+    } else {
+        sysCard.className = 'system-status-card normal';
+        sysTitle.innerText = '🟢 正常運作';
+        sysDelay.innerText = `資料延遲：${diffMins} 分鐘`;
+    }
     
     // Update Status Card
     const statusCard = document.getElementById('status-card');
@@ -50,18 +70,28 @@ function updateDashboard(state, historyCsv) {
     }
     
     // Update Details Grid
-    document.getElementById('val-rain').innerText = rain;
-    document.getElementById('val-radar').innerText = `${radar5km} 點`;
-    document.getElementById('val-dbz').innerText = `${maxDbz} dBZ`;
+    document.getElementById('val-rain').innerText = data.rainfall || '--';
+    document.getElementById('val-radar').innerText = data.radar_pixels !== undefined ? `${data.radar_pixels} 點` : '--';
+    document.getElementById('val-dbz').innerText = data.max_dbz !== undefined ? `${data.max_dbz} dBZ` : '--';
+    document.getElementById('val-weather').innerText = data.weather_description || '--';
+    document.getElementById('val-source').innerText = data.source || '--';
     
     // Update Reason
-    let reasonText = "";
-    if (isCovered) {
-        reasonText = `因為 5km 內雷達回波點數達到 ${radar5km} 點（或測站有雨），系統為了安全起見，判定為加蓋狀態。`;
+    const reasonList = document.getElementById('val-reason-list');
+    reasonList.innerHTML = '';
+    if (data.reasons && data.reasons.length > 0) {
+        data.reasons.forEach(r => {
+            const li = document.createElement('li');
+            li.innerText = r;
+            reasonList.appendChild(li);
+        });
     } else {
-        reasonText = `測站雨量為 0，且雷達回波強度低於門檻，符合無雨標準。`;
+        reasonList.innerHTML = '<li>無詳細原因</li>';
     }
-    document.getElementById('val-reason').innerText = reasonText;
+    
+    // Parse CSV
+    const rows = historyCsv.trim().split('\n').slice(1); // skip header
+    if (rows.length === 0) return;
     
     // Update History Table (Last 24 items max)
     const tbody = document.querySelector('#history-table tbody');
@@ -81,12 +111,16 @@ function updateDashboard(state, historyCsv) {
         if (action.includes('發佈加蓋')) badgeClass = 'cover';
         if (action.includes('發佈解除')) badgeClass = 'uncover';
         
+        // reason is in the 9th column (index 8)
+        let reason = cols[8] || '--';
+        
         tr.innerHTML = `
             <td>${cols[0].split(' ')[1]}</td>
             <td>${cols[1]}</td>
             <td>${cols[3]}</td>
             <td>${cols[4]}</td>
             <td><span class="badge ${badgeClass}">${action}</span></td>
+            <td style="font-size: 0.9rem; color: #cbd5e1;">${reason}</td>
         `;
         tbody.appendChild(tr);
     });
