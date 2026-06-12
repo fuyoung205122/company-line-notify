@@ -59,8 +59,28 @@ function updateDashboard(data, historyCsv) {
     const sysCard = document.getElementById('sys-status-card');
     const sysTitle = document.getElementById('sys-status-title');
     const sysDelay = document.getElementById('sys-delay');
+    const sysNextRun = document.getElementById('sys-next-run');
     
     document.getElementById('sys-last-update').innerText = `最後更新：${timeStr}`;
+    
+    function calculateNextRun() {
+        const now = new Date();
+        let nextRun = new Date(now);
+        const mins = now.getMinutes();
+        if (mins < 7) {
+            nextRun.setMinutes(7, 0, 0);
+        } else if (mins < 37) {
+            nextRun.setMinutes(37, 0, 0);
+        } else {
+            nextRun.setHours(now.getHours() + 1);
+            nextRun.setMinutes(7, 0, 0);
+        }
+        return nextRun.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
+    }
+    
+    if (sysNextRun) {
+        sysNextRun.innerText = `🕒 下次自動檢查：${calculateNextRun()}`;
+    }
     
     let heartbeatDotHtml = '';
     if (data.system_status === 'error') {

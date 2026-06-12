@@ -1,10 +1,10 @@
 {
-  "last_update": "2026-06-12 21:56:19",
+  "last_update": "2026-06-12 22:55:10",
   "is_covered": false,
   "rainfall": "0.0 mm/hr",
   "radar_pixels": 0,
   "max_dbz": 0,
-  "weather_description": "Open-Meteo 備援模式",
+  "weather_description": "備援資料源運作中",
   "source": "Open-Meteo (氣象署備用源)",
   "reasons": [
     "☑ 雨量 = 0",
@@ -14,10 +14,10 @@
   ],
   "system_status": "normal",
   "error_message": "",
-  "execution_duration_sec": 1.24,
+  "execution_duration_sec": 1.2,
   "github_run_id": "未知",
-  "total_runs": 2,
+  "total_runs": 1,
   "successful_runs": 1,
-  "success_rate": "50.0%",
-  "last_success_time": "2026-06-12 21:56:19"
+  "success_rate": "100.0%",
+  "last_success_time": "2026-06-12 22:55:10"
 }
