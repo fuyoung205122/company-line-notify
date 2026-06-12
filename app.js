@@ -43,13 +43,19 @@ function updateDashboard(data, historyCsv) {
     if (data.system_status === 'error') {
         sysCard.className = 'health-card error';
         heartbeatDotHtml = '<span class="status-dot red heartbeat"></span>';
-        sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 系統異常`;
-        sysDelay.innerText = `錯誤：${data.error_message}`;
+        
+        if (data.error_message && data.error_message.includes('氣象署或系統服務異常')) {
+            sysTitle.innerHTML = `${heartbeatDotHtml} 🟡 氣象資料異常`;
+            sysDelay.innerText = '已切換備援資料源';
+        } else {
+            sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 系統故障`;
+            sysDelay.innerText = '請檢查 GitHub Actions';
+        }
     } else if (diffMins >= 40) {
         sysCard.className = 'health-card error';
         heartbeatDotHtml = '<span class="status-dot red"></span>';
-        sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 系統異常`;
-        sysDelay.innerText = `資料已超過 ${diffMins} 分鐘未更新，排程可能已停止`;
+        sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 排程停止`;
+        sysDelay.innerText = `超過40分鐘未更新`;
     } else if (diffMins >= 25) {
         sysCard.className = 'health-card warning';
         heartbeatDotHtml = '<span class="status-dot yellow heartbeat"></span>';
@@ -62,9 +68,24 @@ function updateDashboard(data, historyCsv) {
         sysDelay.innerText = `資料延遲：${diffMins} 分鐘`;
     }
     
-    document.getElementById('sys-success-rate').innerText = data.success_rate || '--';
+    document.getElementById('sys-success-rate').innerText = `成功率：${data.success_rate || '--'}`;
     document.getElementById('sys-last-success').innerText = `最後成功：${data.last_success_time || '--'}`;
     document.getElementById('sys-duration').innerText = data.execution_duration_sec !== undefined ? `${data.execution_duration_sec} 秒` : '--';
+    
+    // Calculate health status
+    const healthStatusEl = document.getElementById('sys-health-status');
+    if (data.success_rate && data.success_rate !== '--' && data.success_rate !== '0%') {
+        const rate = parseFloat(data.success_rate);
+        if (rate >= 99) {
+            healthStatusEl.innerText = '🟢 優秀';
+        } else if (rate >= 95) {
+            healthStatusEl.innerText = '🟡 注意';
+        } else {
+            healthStatusEl.innerText = '🔴 異常';
+        }
+    } else {
+        healthStatusEl.innerText = '--';
+    }
     
     const runIdEl = document.getElementById('sys-run-id');
     if (data.github_run_id && data.github_run_id !== '未知' && data.github_run_id !== '--') {
@@ -97,13 +118,13 @@ function updateDashboard(data, historyCsv) {
     
     let sourceLightHtml = '';
     if (data.source && data.source.includes('中央氣象署')) {
-        sourceLightHtml = '<span class="status-dot green"></span>';
+        sourceLightHtml = '🟢 中央氣象署';
     } else if (data.source && data.source.includes('Open-Meteo')) {
-        sourceLightHtml = '<span class="status-dot yellow"></span>';
+        sourceLightHtml = '🟡 Open-Meteo';
     } else {
-        sourceLightHtml = '<span class="status-dot red"></span>';
+        sourceLightHtml = '🔴 無資料來源';
     }
-    document.getElementById('val-source').innerHTML = `${sourceLightHtml} ${data.source || '--'}`;
+    document.getElementById('val-source').innerHTML = sourceLightHtml;
     
     // Update Reason
     const reasonList = document.getElementById('val-reason-list');

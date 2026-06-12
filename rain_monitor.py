@@ -290,33 +290,27 @@ def append_history_log(exec_time, precip, pixels_2km, pixels_5km, max_dbz, cond_
 def main():
     try:
         start_time_ts = time.time()
-        print("===== Environment Check =====")
-        missing_secrets = []
+        print("===== Secret Summary =====")
         if get_env_or_secret("CWA_API_KEY"):
-            print("✅ CWA_API_KEY 已載入")
+            print("CWA_API_KEY      : OK")
         else:
-            print("❌ Missing Secret: CWA_API_KEY")
-            missing_secrets.append("CWA_API_KEY")
+            print("CWA_API_KEY      : MISSING")
             
         if get_env_or_secret("LINE_NOTIFY_TOKEN"):
-            print("✅ LINE_NOTIFY_TOKEN 已載入")
+            print("LINE_NOTIFY_TOKEN: OK")
         else:
-            print("❌ Missing Secret: LINE_NOTIFY_TOKEN")
-            missing_secrets.append("LINE_NOTIFY_TOKEN")
+            print("LINE_NOTIFY_TOKEN: MISSING")
             
         if get_env_or_secret("GMAIL_USER"):
-            print("✅ GMAIL_USER 已載入")
+            print("GMAIL_USER       : OK")
         else:
-            print("❌ Missing Secret: GMAIL_USER")
-            missing_secrets.append("GMAIL_USER")
+            print("GMAIL_USER       : MISSING")
             
         if get_env_or_secret("GMAIL_APP_PASSWORD"):
-            print("✅ GMAIL_APP_PASSWORD 已載入")
+            print("GMAIL_APP_PASSWORD: OK")
         else:
-            print("❌ Missing Secret: GMAIL_APP_PASSWORD")
-            missing_secrets.append("GMAIL_APP_PASSWORD")
-            
-        print("============================")
+            print("GMAIL_APP_PASSWORD: MISSING")
+        print("==========================")
         
         # 讀取設定檔
         config = load_json(CONFIG_FILE)
@@ -405,7 +399,8 @@ def main():
                 weather_description, _ = get_weather_description(station_id, cwa_api_key)
                 print(f"氣象署測站天氣現象描述: '{weather_description}'")
             else:
-                print("未設定 CWA_API_KEY，跳過氣象署天氣描述檢查。")
+                weather_description = "Open-Meteo 備援模式"
+                print("未設定 CWA_API_KEY，切換為 Open-Meteo 備援模式。")
         except Exception as e:
             print(f"警告：讀取氣象署天氣現象描述失敗: {e}")
             
@@ -669,9 +664,14 @@ def main():
             send_error_email(error_msg, config)
         except Exception as e2:
             print(f"無法發送錯誤通知信: {e2}")
-        # 如果是在 GitHub Actions 中，我們用 exit(1) 讓腳本亮紅燈
+        
         import sys
-        sys.exit(1)
+        if isinstance(e, (FileNotFoundError, json.JSONDecodeError, PermissionError)):
+            print("致命錯誤，中斷 Workflow")
+            sys.exit(1)
+        else:
+            print("錯誤已記錄")
+            sys.exit(0)
 
 if __name__ == "__main__":
     main()
