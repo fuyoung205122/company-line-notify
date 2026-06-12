@@ -1,21 +1,23 @@
 {
-  "last_update": "2026-06-12 21:41:35",
+  "last_update": "2026-06-12 21:56:19",
   "is_covered": false,
-  "rainfall": "--",
+  "rainfall": "0.0 mm/hr",
   "radar_pixels": 0,
   "max_dbz": 0,
-  "weather_description": "未知",
-  "source": "錯誤",
+  "weather_description": "Open-Meteo 備援模式",
+  "source": "Open-Meteo (氣象署備用源)",
   "reasons": [
-    "系統發生內部錯誤",
-    "環境變數或 secrets.json 中的 CWA_API_KEY 未設定，無法查詢中央氣象署降雨資料。"
+    "☑ 雨量 = 0",
+    "☑ 雷達回波低於門檻",
+    "☑ dBZ 低於門檻",
+    "因此判定暫不需加蓋"
   ],
-  "system_status": "error",
-  "error_message": "環境變數或 secrets.json 中的 CWA_API_KEY 未設定，無法查詢中央氣象署降雨資料。",
-  "execution_duration_sec": 0.03,
+  "system_status": "normal",
+  "error_message": "",
+  "execution_duration_sec": 1.24,
   "github_run_id": "未知",
-  "total_runs": 1,
-  "successful_runs": 0,
-  "success_rate": "0.0%",
-  "last_success_time": "無"
+  "total_runs": 2,
+  "successful_runs": 1,
+  "success_rate": "50.0%",
+  "last_success_time": "2026-06-12 21:56:19"
 }
