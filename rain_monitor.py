@@ -290,6 +290,34 @@ def append_history_log(exec_time, precip, pixels_2km, pixels_5km, max_dbz, cond_
 def main():
     try:
         start_time_ts = time.time()
+        print("===== Environment Check =====")
+        missing_secrets = []
+        if get_env_or_secret("CWA_API_KEY"):
+            print("✅ CWA_API_KEY 已載入")
+        else:
+            print("❌ Missing Secret: CWA_API_KEY")
+            missing_secrets.append("CWA_API_KEY")
+            
+        if get_env_or_secret("LINE_NOTIFY_TOKEN"):
+            print("✅ LINE_NOTIFY_TOKEN 已載入")
+        else:
+            print("❌ Missing Secret: LINE_NOTIFY_TOKEN")
+            missing_secrets.append("LINE_NOTIFY_TOKEN")
+            
+        if get_env_or_secret("GMAIL_USER"):
+            print("✅ GMAIL_USER 已載入")
+        else:
+            print("❌ Missing Secret: GMAIL_USER")
+            missing_secrets.append("GMAIL_USER")
+            
+        if get_env_or_secret("GMAIL_APP_PASSWORD"):
+            print("✅ GMAIL_APP_PASSWORD 已載入")
+        else:
+            print("❌ Missing Secret: GMAIL_APP_PASSWORD")
+            missing_secrets.append("GMAIL_APP_PASSWORD")
+            
+        print("============================")
+        
         # 讀取設定檔
         config = load_json(CONFIG_FILE)
         state = load_json(STATE_FILE)
@@ -353,9 +381,6 @@ def main():
 
         # 檢查環境變數是否設定
         cwa_api_key = get_env_or_secret("CWA_API_KEY")
-        
-        if not cwa_api_key:
-            raise ValueError("環境變數或 secrets.json 中的 CWA_API_KEY 未設定，無法查詢中央氣象署降雨資料。")
 
         # 3. 獲取台南市安南區天氣
         lat = config['location']['latitude']
@@ -625,9 +650,9 @@ def main():
                 "max_dbz": 0,
                 "weather_description": "未知",
                 "source": "錯誤",
-                "reasons": ["系統發生內部錯誤", str(e)],
+                "reasons": ["系統發生內部錯誤", "已記錄於後端日誌"],
                 "system_status": "error",
-                "error_message": str(e),
+                "error_message": "氣象署或系統服務異常，已記錄錯誤日誌並嘗試切換備援。請稍後再試。",
                 "execution_duration_sec": duration_sec_err,
                 "github_run_id": github_run_id_err,
                 "total_runs": state['total_runs'],

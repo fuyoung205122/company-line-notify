@@ -1,14 +1,21 @@
 {
-  "last_update": "2026-06-12 21:00:00",
+  "last_update": "2026-06-12 21:41:35",
   "is_covered": false,
   "rainfall": "--",
   "radar_pixels": 0,
   "max_dbz": 0,
-  "weather_description": "等待更新中",
-  "source": "系統初始化",
+  "weather_description": "未知",
+  "source": "錯誤",
   "reasons": [
-    "系統正在等待下一次排程更新，請稍候..."
+    "系統發生內部錯誤",
+    "環境變數或 secrets.json 中的 CWA_API_KEY 未設定，無法查詢中央氣象署降雨資料。"
   ],
   "system_status": "error",
-  "error_message": "V2 架構初始化中，資料將於幾分鐘內自動補齊"
+  "error_message": "環境變數或 secrets.json 中的 CWA_API_KEY 未設定，無法查詢中央氣象署降雨資料。",
+  "execution_duration_sec": 0.03,
+  "github_run_id": "未知",
+  "total_runs": 1,
+  "successful_runs": 0,
+  "success_rate": "0.0%",
+  "last_success_time": "無"
 }
