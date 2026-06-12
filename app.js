@@ -74,12 +74,12 @@ function updateDashboard(data, historyCsv) {
             sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 系統故障`;
             sysDelay.innerText = '請檢查 GitHub Actions';
         }
-    } else if (diffMins >= 40) {
+    } else if (diffMins >= 90) {
         sysCard.className = 'health-card error';
         heartbeatDotHtml = '<span class="status-dot red"></span>';
         sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 排程停止`;
-        sysDelay.innerText = `超過40分鐘未更新`;
-    } else if (diffMins >= 25) {
+        sysDelay.innerText = `超過 90 分鐘未更新`;
+    } else if (diffMins >= 45) {
         sysCard.className = 'health-card warning';
         heartbeatDotHtml = '<span class="status-dot yellow heartbeat"></span>';
         sysTitle.innerHTML = `${heartbeatDotHtml} 🟡 資料延遲`;
