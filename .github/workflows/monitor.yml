@@ -14,7 +14,6 @@ on:
         options:
           - normal
           - force-weather-check
-          - test-line
 
 jobs:
   monitor:
@@ -37,15 +36,12 @@ jobs:
       - name: 4. 執行降雨監控程式
         env:
           # 將您在 GitHub Secrets 裡設定的密碼傳給 Python
-          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
-          LINE_GROUP_ID: ${{ secrets.LINE_GROUP_ID }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           CWA_API_KEY: ${{ secrets.CWA_API_KEY }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.run_mode }}" = "test-line" ]; then
-            python rain_monitor.py --test-line
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.run_mode }}" = "force-weather-check" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.run_mode }}" = "force-weather-check" ]; then
             python rain_monitor.py --force
           else
             python rain_monitor.py

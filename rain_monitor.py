@@ -58,46 +58,7 @@ def save_json(filepath, data):
     with open(filepath, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-def send_line_message(message, token, group_id):
-    url = "https://api.line.me/v2/bot/message/push"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "to": group_id,
-        "messages": [
-            {
-                "type": "text",
-                "text": message
-            }
-        ]
-    }
-    try:
-        response = requests.post(url, headers=headers, json=data, timeout=10)
-        response.raise_for_status()
-        print(f"LINE Messaging API 發送至 {group_id} 成功。")
-        return True
-    except Exception as e:
-        print(f"LINE Messaging API 發送至 {group_id} 失敗: {e}")
-        return False
 
-def get_line_group_ids(line_group):
-    if not line_group:
-        return []
-    return [gid.strip() for gid in line_group.split(',') if gid.strip()]
-
-def send_to_all_line_groups(message, token, line_group, enable_line_notifications=True):
-    if not enable_line_notifications:
-        print("[手動控制] LINE 通知已手動暫停（enable_line_notifications=False），不進行實際發送。")
-        return True
-    group_ids = get_line_group_ids(line_group)
-    print(f"LINE 目標群組數量: {len(group_ids)}")
-    if not token or not group_ids:
-        print("警告：LINE token 或群組 ID 未設定，無法發送 LINE 訊息。")
-        return False
-    results = [send_line_message(message, token, gid) for gid in group_ids]
-    return all(results)
 
 def send_error_email(error_msg, config):
     sender_email = get_env_or_secret("GMAIL_USER")
@@ -126,51 +87,7 @@ def send_error_email(error_msg, config):
     except Exception as e:
         print(f"發送 email 失敗: {e}")
 
-def send_quota_warning_email(remaining, config):
-    sender_email = get_env_or_secret("GMAIL_USER")
-    sender_pass = get_env_or_secret("GMAIL_APP_PASSWORD")
-    recipient = config['email']['recipient']
-    
-    if not sender_email or not sender_pass:
-        print("警告：未設定 GMAIL_USER 或 GMAIL_APP_PASSWORD，無法發送額度警告信。")
-        return
 
-    msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['To'] = recipient
-    msg['Subject'] = "[注意] 廠區天氣廣播 LINE 免費推播額度即將用盡"
-    
-    body = f"廠區天氣廣播 LINE 官方帳號本月的免費額度 (200則) 已經快用完了！\n\n目前剩餘免費額度：大約 {remaining} 則\n\n請留意接下來的推播可能會無法發送，或者您需要前往 LINE 官方後台升級方案。"
-    msg.attach(MIMEText(body, 'plain', 'utf-8'))
-    
-    try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(sender_email, sender_pass)
-        server.send_message(msg)
-        server.quit()
-        print(f"額度警告信已發送至 {recipient}")
-    except Exception as e:
-        print(f"發送額度警告信失敗: {e}")
-
-def check_quota_and_notify(line_token, config, state, current_month_str):
-    if state.get('quota_warning_sent_month') == current_month_str:
-        return
-        
-    url = "https://api.line.me/v2/bot/message/quota/consumption"
-    headers = {"Authorization": f"Bearer {line_token}"}
-    try:
-        resp = requests.get(url, headers=headers, timeout=10)
-        if resp.status_code == 200:
-            data = resp.json()
-            total_usage = data.get('totalUsage', 0)
-            remaining = 200 - total_usage
-            if remaining < 10:
-                print(f"剩餘訊息少於 10 則 (剩餘 {remaining} 則)，發送警告信件。")
-                send_quota_warning_email(remaining, config)
-                state['quota_warning_sent_month'] = current_month_str
-    except Exception as e:
-        print(f"檢查 LINE 額度失敗: {e}")
 
 def get_weather_open_meteo(lat, lon):
     url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=precipitation&timezone=Asia%2FTaipei"
@@ -372,6 +289,7 @@ def append_history_log(exec_time, precip, pixels_2km, pixels_5km, max_dbz, cond_
 
 def main():
     try:
+        start_time_ts = time.time()
         # 讀取設定檔
         config = load_json(CONFIG_FILE)
         state = load_json(STATE_FILE)
@@ -383,22 +301,6 @@ def main():
         print(f"--- 系統執行時間: {now.strftime('%Y-%m-%d %H:%M:%S')} ---")
         import sys
         force_run = "--force" in sys.argv
-        test_line = "--test-line" in sys.argv
-        enable_line = config.get("enable_line_notifications", True)
-        line_token = get_env_or_secret("LINE_CHANNEL_ACCESS_TOKEN")
-        line_group = get_env_or_secret("LINE_GROUP_ID")
-
-        if test_line:
-            print("偵測到 --test-line 參數，執行 LINE 測試發送。")
-            test_msg = (
-                f"✅ LINE 測試通知\n"
-                f"系統時間：{now.strftime('%Y-%m-%d %H:%M:%S')}\n"
-                f"這是一則測試訊息，用來確認群組通知設定正常。"
-            )
-            sent = send_to_all_line_groups(test_msg, line_token, line_group, enable_line)
-            if not sent:
-                raise ValueError("LINE 測試發送失敗：請檢查 LINE token、群組 ID、官方帳號是否已加入群組。")
-            return
         
         # 1. 每日跨日重置機制
         # 如果今天還沒有執行過重置（跨日後第一次執行），就重置狀態。
@@ -452,16 +354,8 @@ def main():
         # 檢查環境變數是否設定
         cwa_api_key = get_env_or_secret("CWA_API_KEY")
         
-        if not line_token or not line_group:
-            print("警告：LINE_CHANNEL_ACCESS_TOKEN 或 LINE_GROUP_ID 未設定，若觸發將無法發送 LINE 訊息。")
-        else:
-            print(f"LINE 設定已讀取，目標群組數量: {len(get_line_group_ids(line_group))}")
         if not cwa_api_key:
             raise ValueError("環境變數或 secrets.json 中的 CWA_API_KEY 未設定，無法查詢中央氣象署降雨資料。")
-            
-        if line_token:
-            current_month_str = now.strftime('%Y-%m')
-            check_quota_and_notify(line_token, config, state, current_month_str)
 
         # 3. 獲取台南市安南區天氣
         lat = config['location']['latitude']
@@ -584,9 +478,7 @@ def main():
             
             if not state['is_covered']:
                 # 狀態轉移: 🟢 -> 🔴
-                print("👉 滿足加蓋防呆條件！準備發送【加蓋帆布】通知。")
-                full_msg = info_header + config['messages']['cover']
-                send_to_all_line_groups(full_msg, line_token, line_group, enable_line)
+                print("👉 滿足加蓋防呆條件！狀態轉換為加蓋。")
                 state['is_covered'] = True
             else:
                 # 狀態鎖定: 🔴 -> 🔴
@@ -614,9 +506,7 @@ def main():
                 
                 if cond2 and cond3 and cond4:
                     # 狀態轉移: 🔴 -> 🟢
-                    print("👉 已停雨且滿足所有解除條件！準備發送【暫不加蓋】通知。")
-                    full_msg = info_header + config['messages']['uncover']
-                    send_to_all_line_groups(full_msg, line_token, line_group, enable_line)
+                    print("👉 已停雨且滿足所有解除條件！狀態轉換為解除。")
                     state['is_covered'] = False
                     state['last_rain_time'] = None
                     current_reasons = [
@@ -669,7 +559,18 @@ def main():
         )
             
         # 寫入狀態 (若被改變)
+        state['total_runs'] = state.get('total_runs', 0) + 1
+        state['successful_runs'] = state.get('successful_runs', 0) + 1
+        state['last_success_time'] = exec_time
         save_json(STATE_FILE, state)
+        
+        duration_sec = round(time.time() - start_time_ts, 2)
+        github_run_id = get_env_or_secret("GITHUB_RUN_ID") or "未知"
+        
+        success_rate = "0%"
+        if state['total_runs'] > 0:
+            rate = (state['successful_runs'] / state['total_runs']) * 100
+            success_rate = f"{rate:.1f}%"
         
         # 寫入 V2 Dashboard 資料
         dashboard_data = {
@@ -682,7 +583,13 @@ def main():
             "source": source,
             "reasons": current_reasons,
             "system_status": "normal",
-            "error_message": ""
+            "error_message": "",
+            "execution_duration_sec": duration_sec,
+            "github_run_id": github_run_id,
+            "total_runs": state['total_runs'],
+            "successful_runs": state['successful_runs'],
+            "success_rate": success_rate,
+            "last_success_time": state['last_success_time']
         }
         save_json(DASHBOARD_FILE, dashboard_data)
         
@@ -694,8 +601,22 @@ def main():
         
         # 嘗試寫入系統異常狀態到 dashboard_data.json
         try:
+            state = load_json(STATE_FILE)
+            state['total_runs'] = state.get('total_runs', 0) + 1
+            save_json(STATE_FILE, state)
+            
             tw_tz = pytz.timezone('Asia/Taipei')
             now_err = datetime.datetime.now(tw_tz).strftime('%Y-%m-%d %H:%M:%S')
+            duration_sec_err = -1
+            if 'start_time_ts' in locals():
+                duration_sec_err = round(time.time() - start_time_ts, 2)
+            github_run_id_err = get_env_or_secret("GITHUB_RUN_ID") or "未知"
+            
+            success_rate_err = "0%"
+            if state['total_runs'] > 0:
+                rate = (state.get('successful_runs', 0) / state['total_runs']) * 100
+                success_rate_err = f"{rate:.1f}%"
+                
             err_data = {
                 "last_update": now_err,
                 "is_covered": False,
@@ -703,10 +624,16 @@ def main():
                 "radar_pixels": 0,
                 "max_dbz": 0,
                 "weather_description": "未知",
-                "source": "未知",
+                "source": "錯誤",
                 "reasons": ["系統發生內部錯誤", str(e)],
                 "system_status": "error",
-                "error_message": str(e)
+                "error_message": str(e),
+                "execution_duration_sec": duration_sec_err,
+                "github_run_id": github_run_id_err,
+                "total_runs": state['total_runs'],
+                "successful_runs": state.get('successful_runs', 0),
+                "success_rate": success_rate_err,
+                "last_success_time": state.get('last_success_time', "無")
             }
             save_json(DASHBOARD_FILE, err_data)
         except:

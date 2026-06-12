@@ -16,8 +16,8 @@ async function fetchData() {
         document.getElementById('status-subtitle').innerText = "無法取得最新狀態，請稍後再試。";
         
         const sysCard = document.getElementById('sys-status-card');
-        sysCard.className = 'system-status-card error';
-        document.getElementById('sys-status-title').innerText = '🔴 系統連線失敗';
+        sysCard.className = 'health-card error';
+        document.getElementById('sys-status-title').innerHTML = '<span class="status-dot red"></span> 🔴 系統連線失敗';
     }
 }
 
@@ -37,22 +37,40 @@ function updateDashboard(data, historyCsv) {
     
     document.getElementById('sys-last-update').innerText = `最後更新：${timeStr}`;
     
+    let heartbeatDotHtml = '';
     if (data.system_status === 'error') {
-        sysCard.className = 'system-status-card error';
-        sysTitle.innerText = '🔴 系統異常';
+        sysCard.className = 'health-card error';
+        heartbeatDotHtml = '<span class="status-dot red heartbeat"></span>';
+        sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 系統異常`;
         sysDelay.innerText = `錯誤：${data.error_message}`;
     } else if (diffMins >= 30) {
-        sysCard.className = 'system-status-card error';
-        sysTitle.innerText = '🔴 系統異常';
+        sysCard.className = 'health-card error';
+        heartbeatDotHtml = '<span class="status-dot red"></span>';
+        sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 系統異常`;
         sysDelay.innerText = `資料已超過 ${diffMins} 分鐘未更新，排程可能已停止`;
     } else if (diffMins >= 15) {
-        sysCard.className = 'system-status-card warning';
-        sysTitle.innerText = '🟡 資料延遲';
+        sysCard.className = 'health-card warning';
+        heartbeatDotHtml = '<span class="status-dot yellow heartbeat"></span>';
+        sysTitle.innerHTML = `${heartbeatDotHtml} 🟡 資料延遲`;
         sysDelay.innerText = `資料延遲：${diffMins} 分鐘 (排程可能壅塞)`;
     } else {
-        sysCard.className = 'system-status-card normal';
-        sysTitle.innerText = '🟢 正常運作';
+        sysCard.className = 'health-card normal';
+        heartbeatDotHtml = '<span class="status-dot green heartbeat"></span>';
+        sysTitle.innerHTML = `${heartbeatDotHtml} 🟢 正常運作`;
         sysDelay.innerText = `資料延遲：${diffMins} 分鐘`;
+    }
+    
+    document.getElementById('sys-success-rate').innerText = data.success_rate || '--';
+    document.getElementById('sys-last-success').innerText = `最後成功：${data.last_success_time || '--'}`;
+    document.getElementById('sys-duration').innerText = data.execution_duration_sec !== undefined ? `${data.execution_duration_sec} 秒` : '--';
+    
+    const runIdEl = document.getElementById('sys-run-id');
+    if (data.github_run_id && data.github_run_id !== '未知' && data.github_run_id !== '--') {
+        runIdEl.innerText = data.github_run_id;
+        runIdEl.href = `https://github.com/fuyoung205122/company-line-notify/actions/runs/${data.github_run_id}`;
+    } else {
+        runIdEl.innerText = '--';
+        runIdEl.removeAttribute('href');
     }
     
     // Update Status Card
@@ -74,7 +92,16 @@ function updateDashboard(data, historyCsv) {
     document.getElementById('val-radar').innerText = data.radar_pixels !== undefined ? `${data.radar_pixels} 點` : '--';
     document.getElementById('val-dbz').innerText = data.max_dbz !== undefined ? `${data.max_dbz} dBZ` : '--';
     document.getElementById('val-weather').innerText = data.weather_description || '--';
-    document.getElementById('val-source').innerText = data.source || '--';
+    
+    let sourceLightHtml = '';
+    if (data.source && data.source.includes('中央氣象署')) {
+        sourceLightHtml = '<span class="status-dot green"></span>';
+    } else if (data.source && data.source.includes('Open-Meteo')) {
+        sourceLightHtml = '<span class="status-dot yellow"></span>';
+    } else {
+        sourceLightHtml = '<span class="status-dot red"></span>';
+    }
+    document.getElementById('val-source').innerHTML = `${sourceLightHtml} ${data.source || '--'}`;
     
     // Update Reason
     const reasonList = document.getElementById('val-reason-list');

@@ -13,10 +13,22 @@
             <h1>廠區降雨監控系統</h1>
         </header>
 
-        <section class="system-status-card" id="sys-status-card">
-            <h3 id="sys-status-title">系統狀態：連線中...</h3>
-            <p id="sys-last-update">最後更新：載入中</p>
-            <p id="sys-delay">資料延遲：--</p>
+        <section class="health-dashboard">
+            <div class="health-card" id="sys-status-card">
+                <h3 id="sys-status-title"><span id="heartbeat-dot" class="status-dot"></span> 系統狀態：連線中...</h3>
+                <p id="sys-last-update">最後更新：載入中</p>
+                <p id="sys-delay">資料延遲：--</p>
+            </div>
+            <div class="health-card">
+                <h3>📈 系統正常率</h3>
+                <p id="sys-success-rate">--</p>
+                <p id="sys-last-success" class="sub-text">最後成功：--</p>
+            </div>
+            <div class="health-card">
+                <h3>⏱️ 執行耗時</h3>
+                <p id="sys-duration">-- 秒</p>
+                <p class="sub-text">Run ID: <a id="sys-run-id" href="#" target="_blank">--</a></p>
+            </div>
         </section>
 
         <section class="status-card" id="status-card">
