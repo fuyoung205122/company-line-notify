@@ -1,0 +1,177 @@
+:root {
+    --bg-color: #0f172a;
+    --text-color: #f8fafc;
+    --glass-bg: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    
+    --color-red: #ef4444;
+    --color-red-glow: rgba(239, 68, 68, 0.3);
+    --color-green: #10b981;
+    --color-green-glow: rgba(16, 185, 129, 0.3);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background-color: var(--bg-color);
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(30, 58, 138, 0.4) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(15, 23, 42, 1) 0px, transparent 50%);
+    color: var(--text-color);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    display: flex;
+    justify-content: center;
+}
+
+.glass-container {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 800px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+header h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(to right, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+}
+
+#last-update {
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+/* Status Card */
+.status-card {
+    text-align: center;
+    padding: 2rem;
+    border-radius: 16px;
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+    border: 1px solid var(--glass-border);
+}
+
+.status-card.cover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: var(--color-red);
+    box-shadow: 0 0 30px var(--color-red-glow);
+}
+
+.status-card.uncover {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: var(--color-green);
+    box-shadow: 0 0 30px var(--color-green-glow);
+}
+
+#status-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+}
+
+.status-card.cover #status-title { color: var(--color-red); }
+.status-card.uncover #status-title { color: var(--color-green); }
+
+/* Details Grid */
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.detail-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.detail-card h3 {
+    font-size: 0.9rem;
+    color: #cbd5e1;
+    margin-bottom: 0.5rem;
+}
+
+.detail-card p {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+/* Reason Card */
+.reason-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.reason-card h3 {
+    font-size: 1.1rem;
+    color: #cbd5e1;
+    margin-bottom: 0.5rem;
+}
+
+/* History Table */
+.history-section h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+th {
+    background: rgba(255, 255, 255, 0.05);
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.badge.cover { background: var(--color-red); color: white; }
+.badge.uncover { background: var(--color-green); color: white; }
+.badge.keep { background: #64748b; color: white; }

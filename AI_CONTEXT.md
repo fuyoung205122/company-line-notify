@@ -5,20 +5,21 @@
 ---
 
 ## 📌 專案架構
-- **核心目標**：定時監控台南市安南區的天氣，並在下雨或停雨時發送 LINE 廣播通知給廠區人員（後警、物流及科技廠），提醒是否需要加蓋帆布。
+- **核心目標**：定時監控台南市安南區的天氣，將結果輸出至 GitHub 並透過 **Web Dashboard 靜態網頁**提供現場人員隨時查看是否需要加蓋帆布（LINE 通知已依需求停用）。
 - **運行環境**：部署於 GitHub 儲存庫 (`fuyoung205122/company-line-notify`)，透過 GitHub Actions 排程定時執行（每 10 分鐘一次，避開整點：於每小時的 2, 12, 22, 32, 42, 52 分啟動）。
 - **依賴外部服務**：
   - **主要天氣源**：中華民國中央氣象署 API (包含 `O-A0002-001` 雨量計、`O-A0003-001` 天氣現象、`O-A0058-001` 雷達回波圖分析)。
   - **備援天氣源**：Open-Meteo API (當氣象署 API 斷線或異常時自動切換)。
-  - **LINE 官方帳號 API**：發送群組廣播訊息。
-  - **Gmail SMTP**：系統發生例外錯誤或 LINE 免費額度不足時，寄送 Email 警告信給管理員。
+  - **網頁代管**：GitHub Pages (後續預計轉移至 Vercel)。
+  - **Gmail SMTP**：系統發生例外錯誤時，寄送 Email 警告信給管理員。
 
 ---
 
 ## 📂 核心檔案說明
-- `rain_monitor.py`：主程式邏輯，包含氣象數據抓取、雷達圖像素分析（numpy 遮罩計算）、時間與假日判斷、狀態比對及 LINE 推播。
-- `config.json`：存放地理位置（經緯度、測站與雷達畫素座標）、通知訊息範本、錯誤通知收件人、**東陽 2026 行事曆設定**（已與代碼分離）以及 `enable_line_notifications` 手動控制開關。
+- `rain_monitor.py`：主程式邏輯，包含氣象數據抓取、雷達圖像素分析（numpy 遮罩計算）、時間與假日判斷、狀態比對及日誌紀錄。
+- `config.json`：存放地理位置（經緯度、測站與雷達畫素座標）、錯誤通知收件人、**東陽 2026 行事曆設定**以及 `enable_line_notifications` (目前設為 false)。
 - `state.json`：紀錄機器人當前狀態，包含 `is_covered` (目前是否判定為蓋上帆布狀態)、`last_rain_time` (最後一次下雨的時間戳記) 及 `last_reset_date` (最後一次跨日重置的日期)。
+- `index.html` / `app.js` / `style.css`：V2 新增的 Web Dashboard 前端靜態網頁，直接讀取 `state.json` 與 `history_log.csv` 顯示即時動態與歷史紀錄。
 - `test_rain_monitor.py`：本地單元測試腳本，使用 Python 內建 unittest 庫，可在不上傳 GitHub 的情況下直接測試 API 模擬與 JSON 解析。
 - `.github/workflows/monitor.yml`：定義 GitHub Actions 執行排程與環境變數注入.
 - `system_architecture.md`：系統架構圖說明文件，內含 Mermaid 架構圖。
