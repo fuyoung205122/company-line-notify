@@ -1,4 +1,5 @@
 let currentLastUpdate = null;
+let currentRunId = null;
 
 async function fetchData() {
     try {
@@ -16,6 +17,17 @@ async function fetchData() {
             currentLastUpdate = dashboardData.last_update;
             isNewData = true;
             updateDashboard(dashboardData, historyText);
+        }
+        
+        if (currentRunId === null && dashboardData.github_run_id) {
+            currentRunId = dashboardData.github_run_id;
+        } else if (currentRunId && dashboardData.github_run_id && currentRunId !== dashboardData.github_run_id) {
+            currentRunId = dashboardData.github_run_id;
+            const actionStatus = document.getElementById('action-status');
+            if (actionStatus && actionStatus.innerHTML.includes('⏳ 執行中...')) {
+                actionStatus.innerHTML = `✅ 最新 Run 已完成 <a href="https://github.com/fuyoung205122/company-line-notify/actions/runs/${currentRunId}" target="_blank">查看紀錄</a>`;
+                document.getElementById('run-btn').disabled = false;
+            }
         }
         
         return { success: true, isNewData: isNewData };
@@ -223,3 +235,72 @@ async function forceRefresh() {
 }
 
 document.getElementById('refresh-btn').addEventListener('click', forceRefresh);
+
+function waitForNewRun() {
+    let attempts = 0;
+    const interval = setInterval(async () => {
+        attempts++;
+        if (attempts > 30) {
+            clearInterval(interval);
+            document.getElementById('action-status').innerHTML = '⚠️ 檢查超時，請手動更新';
+            document.getElementById('run-btn').disabled = false;
+            return;
+        }
+        await fetchData();
+        const actionStatus = document.getElementById('action-status');
+        if (!actionStatus.innerHTML.includes('⏳ 執行中...')) {
+            clearInterval(interval);
+        }
+    }, 5000);
+}
+
+async function triggerGitHubAction() {
+    const status = document.getElementById('action-status');
+    const btn = document.getElementById('run-btn');
+
+    let ghPat = localStorage.getItem('GH_PAT');
+    if (!ghPat) {
+        ghPat = prompt("進階功能：請輸入具有 repo, workflow 權限的 GitHub PAT：");
+        if (ghPat) {
+            localStorage.setItem('GH_PAT', ghPat);
+        } else {
+            return;
+        }
+    }
+
+    btn.disabled = true;
+    status.innerHTML = '🚀 已送出執行請求...';
+
+    try {
+        const response = await fetch('https://api.github.com/repos/fuyoung205122/company-line-notify/actions/workflows/monitor.yml/dispatches', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/vnd.github+json',
+                'Authorization': `Bearer ${ghPat}`,
+                'X-GitHub-Api-Version': '2022-11-28',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ref: 'master' })
+        });
+
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 404) {
+                localStorage.removeItem('GH_PAT');
+                throw new Error('Token 無效或沒有權限');
+            }
+            throw new Error(`API 錯誤: ${response.status}`);
+        }
+
+        status.innerHTML = '✅ 已觸發 GitHub Actions';
+        setTimeout(() => {
+            status.innerHTML = '⏳ 執行中...';
+            waitForNewRun();
+        }, 3000);
+
+    } catch (err) {
+        status.innerHTML = `❌ 觸發失敗 (${err.message})`;
+        btn.disabled = false;
+    }
+}
+
+document.getElementById('run-btn').addEventListener('click', triggerGitHubAction);
