@@ -300,7 +300,12 @@ async function triggerGitHubAction() {
                 'X-GitHub-Api-Version': '2022-11-28',
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ ref: 'master' })
+            body: JSON.stringify({ 
+                ref: 'master',
+                inputs: {
+                    run_mode: 'force-weather-check'
+                }
+            })
         });
 
         if (!response.ok) {
