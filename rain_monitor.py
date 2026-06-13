@@ -269,11 +269,7 @@ def main():
         else:
             print("CWA_API_KEY      : MISSING")
             
-        if get_env_or_secret("LINE_NOTIFY_TOKEN"):
-            print("LINE_NOTIFY_TOKEN: OK")
-        else:
-            print("LINE_NOTIFY_TOKEN: MISSING")
-            
+
         if get_env_or_secret("GMAIL_USER"):
             print("GMAIL_USER       : OK")
         else:

@@ -29,16 +29,13 @@
             <div class="health-card">
                 <h3>⏱️ 執行耗時</h3>
                 <p id="sys-duration">-- 秒</p>
-                <p class="sub-text">Run ID: <a id="sys-run-id" href="#" target="_blank">--</a></p>
+                <p class="sub-text"><a id="sys-run-id" href="#" target="_blank" style="color: #60a5fa; text-decoration: none;">--</a></p>
             </div>
         </section>
 
         <div class="action-buttons">
             <button id="refresh-btn" class="refresh-btn">
                 🔄 立即更新
-            </button>
-            <button id="run-btn" class="refresh-btn run-btn">
-                🚀 立即執行檢查
             </button>
             <div id="action-status"></div>
             <div id="refresh-status" style="display:none;"></div>
@@ -80,7 +77,7 @@
         </section>
         
         <section class="history-section">
-            <h2>最近 24 小時紀錄</h2>
+            <h2>最近 24 筆紀錄</h2>
             <div class="table-container">
                 <table id="history-table">
                     <thead>

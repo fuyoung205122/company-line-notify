@@ -23,11 +23,6 @@ async function fetchData() {
             currentRunId = dashboardData.github_run_id;
         } else if (currentRunId && dashboardData.github_run_id && currentRunId !== dashboardData.github_run_id) {
             currentRunId = dashboardData.github_run_id;
-            const actionStatus = document.getElementById('action-status');
-            if (actionStatus && actionStatus.innerHTML.includes('⏳ 執行中...')) {
-                actionStatus.innerHTML = `✅ 最新 Run 已完成 <a href="https://github.com/fuyoung205122/company-line-notify/actions/runs/${currentRunId}" target="_blank">查看紀錄</a>`;
-                document.getElementById('run-btn').disabled = false;
-            }
         }
         
         return { success: true, isNewData: isNewData };
@@ -86,40 +81,41 @@ function updateDashboard(data, historyCsv) {
     if (data.system_status === 'error') {
         sysCard.className = 'health-card error';
         heartbeatDotHtml = '<span class="status-dot red heartbeat"></span>';
-        
-        if (data.error_message && data.error_message.includes('氣象署或系統服務異常')) {
-            sysTitle.innerHTML = `${heartbeatDotHtml} 🟡 氣象資料異常`;
-            sysDelay.innerText = '已切換備援資料源';
-        } else {
-            sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 系統故障`;
-            sysDelay.innerText = '請檢查 GitHub Actions';
-        }
+        sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 系統異常<br><span style="font-size:0.8em; color:#ef4444;">請檢查 GitHub Actions</span>`;
+        sysDelay.innerText = '請檢查執行日誌';
     } else if (diffMins >= 90) {
         sysCard.className = 'health-card error';
         heartbeatDotHtml = '<span class="status-dot red"></span>';
-        sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 排程停止`;
-        sysDelay.innerText = `超過 90 分鐘未更新`;
+        sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 排程停止<br><span style="font-size:0.8em; color:#ef4444;">超過 90 分鐘未更新</span>`;
+        sysDelay.innerText = `資料延遲：${diffMins} 分鐘`;
     } else if (diffMins >= 45) {
         sysCard.className = 'health-card warning';
         heartbeatDotHtml = '<span class="status-dot yellow heartbeat"></span>';
-        sysTitle.innerHTML = `${heartbeatDotHtml} 🟡 資料延遲`;
-        sysDelay.innerText = `資料延遲：${diffMins} 分鐘 (排程可能壅塞)`;
+        sysTitle.innerHTML = `${heartbeatDotHtml} 🟡 資料延遲<br><span style="font-size:0.8em; color:#f59e0b;">排程可能壅塞</span>`;
+        sysDelay.innerText = `資料延遲：${diffMins} 分鐘`;
     } else {
         sysCard.className = 'health-card normal';
         heartbeatDotHtml = '<span class="status-dot green heartbeat"></span>';
-        sysTitle.innerHTML = `${heartbeatDotHtml} 🟢 正常運作`;
+        let sourceHtml = data.source || '中央氣象署';
+        if (sourceHtml.includes('異常')) {
+            sysTitle.innerHTML = `${heartbeatDotHtml} 🟡 雨量站異常<br><span style="font-size:0.8em; color:#f59e0b;">目前使用雷達模式</span>`;
+        } else {
+            sysTitle.innerHTML = `${heartbeatDotHtml} 🟢 正常運作<br><span style="font-size:0.8em; color:#10b981;">資料來源：${sourceHtml}</span>`;
+        }
         sysDelay.innerText = `資料延遲：${diffMins} 分鐘`;
     }
     
-    document.getElementById('sys-success-rate').innerText = `成功率：${data.success_rate || '--'}`;
     document.getElementById('sys-last-success').innerText = `最後成功：${data.last_success_time || '--'}`;
     document.getElementById('sys-duration').innerText = data.execution_duration_sec !== undefined ? `${data.execution_duration_sec} 秒` : '--';
     
     // Calculate health status
     const healthStatusEl = document.getElementById('sys-health-status');
-    if (data.total_runs !== undefined && data.total_runs < 10) {
-        healthStatusEl.innerText = '🟢 蒐集中';
+    const successRateEl = document.getElementById('sys-success-rate');
+    if (data.total_runs !== undefined && data.total_runs < 50) {
+        healthStatusEl.innerText = '🟢 資料蒐集中';
+        successRateEl.innerText = '';
     } else if (data.success_rate && data.success_rate !== '--' && data.success_rate !== '0%') {
+        successRateEl.innerText = `成功率：${data.success_rate}`;
         const rate = parseFloat(data.success_rate);
         if (rate >= 99) {
             healthStatusEl.innerText = '🟢 優秀';
@@ -130,11 +126,12 @@ function updateDashboard(data, historyCsv) {
         }
     } else {
         healthStatusEl.innerText = '--';
+        successRateEl.innerText = `成功率：--`;
     }
     
     const runIdEl = document.getElementById('sys-run-id');
     if (data.github_run_id && data.github_run_id !== '未知' && data.github_run_id !== '--') {
-        runIdEl.innerText = data.github_run_id;
+        runIdEl.innerText = '📄 查看本次執行紀錄';
         runIdEl.href = `https://github.com/fuyoung205122/company-line-notify/actions/runs/${data.github_run_id}`;
     } else {
         runIdEl.innerText = '--';
@@ -256,76 +253,4 @@ async function forceRefresh() {
 
 document.getElementById('refresh-btn').addEventListener('click', forceRefresh);
 
-function waitForNewRun() {
-    let attempts = 0;
-    const interval = setInterval(async () => {
-        attempts++;
-        if (attempts > 30) {
-            clearInterval(interval);
-            document.getElementById('action-status').innerHTML = '⚠️ 檢查超時，請手動更新';
-            document.getElementById('run-btn').disabled = false;
-            return;
-        }
-        await fetchData();
-        const actionStatus = document.getElementById('action-status');
-        if (!actionStatus.innerHTML.includes('⏳ 執行中...')) {
-            clearInterval(interval);
-        }
-    }, 5000);
-}
 
-async function triggerGitHubAction() {
-    const status = document.getElementById('action-status');
-    const btn = document.getElementById('run-btn');
-
-    let ghPat = localStorage.getItem('GH_PAT');
-    if (!ghPat) {
-        ghPat = prompt("進階功能：請輸入具有 repo, workflow 權限的 GitHub PAT：");
-        if (ghPat) {
-            localStorage.setItem('GH_PAT', ghPat);
-        } else {
-            return;
-        }
-    }
-
-    btn.disabled = true;
-    status.innerHTML = '🚀 已送出執行請求...';
-
-    try {
-        const response = await fetch('https://api.github.com/repos/fuyoung205122/company-line-notify/actions/workflows/monitor.yml/dispatches', {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/vnd.github+json',
-                'Authorization': `Bearer ${ghPat}`,
-                'X-GitHub-Api-Version': '2022-11-28',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ 
-                ref: 'master',
-                inputs: {
-                    run_mode: 'force-weather-check'
-                }
-            })
-        });
-
-        if (!response.ok) {
-            if (response.status === 401 || response.status === 404) {
-                localStorage.removeItem('GH_PAT');
-                throw new Error('Token 無效或沒有權限');
-            }
-            throw new Error(`API 錯誤: ${response.status}`);
-        }
-
-        status.innerHTML = '✅ 已觸發 GitHub Actions';
-        setTimeout(() => {
-            status.innerHTML = '⏳ 執行中...';
-            waitForNewRun();
-        }, 3000);
-
-    } catch (err) {
-        status.innerHTML = `❌ 觸發失敗 (${err.message})`;
-        btn.disabled = false;
-    }
-}
-
-document.getElementById('run-btn').addEventListener('click', triggerGitHubAction);
