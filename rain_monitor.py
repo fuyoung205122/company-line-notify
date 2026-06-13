@@ -342,9 +342,8 @@ def main():
             print("目前非營業時間 (07:30-19:30)，不執行檢查。")
             return
 
-        cwa_api_key = get_env_or_secret("CWA_API_KEY")
-        if cwa_api_key:
-            cwa_api_key = cwa_api_key.strip()
+        cwa_api_key = os.environ.get('CWA_API_KEY', 'CWA-6C975A83-706E-4AA9-B49C-137294C4F587')
+        cwa_api_key = cwa_api_key.strip()
         
         fallback_error_msg = ""
 

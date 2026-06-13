@@ -167,10 +167,12 @@ function updateDashboard(data, historyCsv) {
     let sourceLightHtml = '';
     if (data.source && data.source.includes('中央氣象署')) {
         sourceLightHtml = '🟢 中央氣象署';
+    } else if (data.source && data.source.includes('雷達')) {
+        sourceLightHtml = '🟡 雷達模式';
     } else if (data.source && data.source.includes('Open-Meteo')) {
         sourceLightHtml = '🟡 Open-Meteo';
     } else {
-        sourceLightHtml = '🔴 無資料來源';
+        sourceLightHtml = `🔴 ${data.source || '無資料來源'}`;
     }
     document.getElementById('val-source').innerHTML = sourceLightHtml;
     
