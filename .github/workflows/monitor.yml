@@ -41,7 +41,7 @@ jobs:
           CWA_API_KEY: ${{ secrets.CWA_API_KEY }}
           GITHUB_RUN_ID: ${{ github.run_id }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.run_mode }}" = "force-weather-check" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             python rain_monitor.py --force
           else
             python rain_monitor.py
