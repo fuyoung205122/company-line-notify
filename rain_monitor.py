@@ -89,30 +89,6 @@ def send_error_email(error_msg, config):
 
 
 
-def get_weather_open_meteo(lat, lon):
-    url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=precipitation&timezone=Asia%2FTaipei"
-    response = requests.get(url, timeout=10)
-    response.raise_for_status()
-    data = response.json()
-    
-    current_data = data.get('current', {})
-    precip = current_data.get('precipitation', 0)
-    obs_time_utc = current_data.get('time', '')
-    
-    # 轉換時間格式，Open-Meteo 回傳格式如 "2026-06-07T10:00"
-    try:
-        dt = datetime.datetime.strptime(obs_time_utc, "%Y-%m-%dT%H:%M")
-        obs_time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
-    except Exception:
-        tw_tz = pytz.timezone('Asia/Taipei')
-        obs_time_str = datetime.datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M:%S")
-        
-    is_raining = precip > 0
-    precip_display = f"{precip} mm/hr"
-    
-    print(f"Open-Meteo 觀測時間: {obs_time_str}, 雨量: {precip_display}")
-    return is_raining, obs_time_str, precip_display, "Open-Meteo (氣象署備用源)"
-
 def get_weather(station_id, api_key, lat, lon):
     # 優先嘗試中央氣象署 API
     try:
@@ -172,11 +148,8 @@ def get_weather(station_id, api_key, lat, lon):
         return is_raining, obs_time_str, precip_display, f"中央氣象署 ({station_name}站)"
         
     except Exception as e:
-        print(f"警告：中央氣象署 API 查詢失敗（原因：{e}），自動切換至備援 Open-Meteo 天氣源...")
-        try:
-            return get_weather_open_meteo(lat, lon) + (str(e),)
-        except Exception as fallback_err:
-            raise RuntimeError(f"主要天氣源與備援天氣源皆查詢失敗。主要錯誤: {e} | 備援錯誤: {fallback_err}")
+        print(f"錯誤：中央氣象署 API 查詢失敗（原因：{e}）")
+        raise e
 
 def get_weather_description(station_id, api_key):
     if not api_key:
@@ -386,20 +359,15 @@ def main():
         
         # 3.1 讀取雨量計資料
         try:
-            result = get_weather(station_id, cwa_api_key, lat, lon)
-            if len(result) == 5:
-                is_raining_gauge, obs_time, precip, source, fallback_err = result
-                fallback_error_msg = f"氣象署API失敗: {fallback_err}"
-            else:
-                is_raining_gauge, obs_time, precip, source = result
+            is_raining_gauge, obs_time, precip, source = get_weather(station_id, cwa_api_key, lat, lon)
             print(f"雨量計觀測結果: 是否有雨: {is_raining_gauge} | 觀測時間: {obs_time} | 雨量值: {precip} | 來源: {source}")
         except Exception as e:
-            print(f"警告：讀取雨量計資料失敗: {e}，雨量計判定為無雨。")
+            print(f"警告：讀取雨量計資料失敗: {e}，雨量站異常，已切換雷達模式。")
             is_raining_gauge = False
             obs_time = now.strftime('%Y-%m-%d %H:%M:%S')
             precip = "未知"
-            source = "未明 (讀取失敗)"
-            fallback_error_msg = f"完全無法讀取天氣: {e}"
+            source = "雨量站異常，已切換雷達模式"
+            fallback_error_msg = f"氣象署雨量站連線失敗: {e}"
             
         # 3.2 讀取天氣現象描述
         weather_description = "未知"
@@ -408,9 +376,10 @@ def main():
                 weather_description, _ = get_weather_description(station_id, cwa_api_key)
                 print(f"氣象署測站天氣現象描述: '{weather_description}'")
             else:
-                weather_description = "備援資料源運作中"
-                print("未設定 CWA_API_KEY，切換為備援模式。")
+                weather_description = "讀取失敗"
+                print("未設定 CWA_API_KEY，無法讀取天氣現象。")
         except Exception as e:
+            weather_description = "讀取失敗"
             print(f"警告：讀取氣象署天氣現象描述失敗: {e}")
             
         # 3.3 讀取雷達回波
@@ -446,8 +415,12 @@ def main():
                 print(f"雷達回波檢測: 5km半徑內是否有回波: {has_radar_echo_cover} (回波點數: {radar_pixels_cover}) | 5km半徑內是否有回波: {has_radar_echo_uncover} (回波點數: {radar_pixels_uncover})")
             else:
                 print("未設定 CWA_API_KEY，跳過雷達回波檢查。")
+                raise ValueError("未設定 CWA_API_KEY")
         except Exception as e:
             print(f"警告：讀取或解析雷達回波圖失敗: {e}")
+            if "異常" in source or "未知" in precip:
+                fallback_error_msg += f" | 雷達亦失敗: {e}"
+                raise RuntimeError(f"系統異常：雨量計與雷達皆無法取得資料。詳細錯誤：{fallback_error_msg}")
         
         current_time_ts = now.timestamp()
         
@@ -664,7 +637,7 @@ def main():
                 "source": "錯誤",
                 "reasons": ["系統發生內部錯誤", "已記錄於後端日誌"],
                 "system_status": "error",
-                "error_message": "氣象署或系統服務異常，已記錄錯誤日誌並嘗試切換備援。請稍後再試。",
+                "error_message": f"系統發生致命錯誤：{e}",
                 "execution_duration_sec": duration_sec_err,
                 "github_run_id": github_run_id_err,
                 "total_runs": state['total_runs'],

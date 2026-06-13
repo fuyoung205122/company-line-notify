@@ -10,7 +10,7 @@
 - **運行環境**：部署於 GitHub 儲存庫 (`fuyoung205122/company-line-notify`)，透過 GitHub Actions 排程定時執行（每 30 分鐘一次，避開整點：於每小時的 7, 37 分啟動）。支援前端 `workflow_dispatch` 立即觸發執行。
 - **依賴外部服務**：
   - **主要天氣源**：中華民國中央氣象署 API。
-  - **備援天氣源**：Open-Meteo API（自動降級容錯）。
+  - **備援天氣源**：當雨量站故障時，單獨以雷達回波作為判斷依據。
   - **網頁代管**：GitHub Pages。
   - **Gmail SMTP**：系統發生致命錯誤時，寄送 Email 警告信給管理員。
 
@@ -61,10 +61,10 @@ graph TD
     Exec -->|1. 讀取| Config[(config.json)]
     Exec -->|2. 讀取| State[(state.json)]
     Exec -->|3. GET 數據| CWA[中央氣象署 API]
-    CWA -.->|失敗時無縫切換| OpenMeteo[Open-Meteo 備援]
+    CWA -.->|雨量站失敗| RadarOnly[切換單純雷達回波決策]
     
     CWA -->|回傳資料| Exec
-    OpenMeteo -->|回傳資料| Exec
+    RadarOnly -->|回傳資料| Exec
 
     Exec -->|4. 寫入| History[(history_log.csv)]
     Exec -->|5. 寫入| StateOut[(state.json)]
@@ -81,6 +81,6 @@ graph TD
 ---
 
 ## 🛡️ 系統穩定性機制
-- **優雅降級 (Graceful Degradation)**：若 `CWA_API_KEY` 遺失或連線失敗，系統自動切換至 `Open-Meteo`，且 `system_status` 維持 `normal`。
+- **優雅降級 (Graceful Degradation)**：若雨量站資料無法取得，系統自動切換為「單獨以雷達回波」進行降雨判斷，且 `system_status` 維持 `normal`。若雷達回波也失效，則將系統狀態設為 `error` 並發送警告。
 - **防止狼來了**：一般 API 錯誤會被記錄並 `sys.exit(0)`，只有 `FileNotFoundError` 等致命 I/O 錯誤才會導致 Workflow 亮紅燈 `sys.exit(1)`。
 - **信件通報**：發生致命例外錯誤時，發送 Gmail 通知給管理員。
