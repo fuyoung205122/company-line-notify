@@ -285,6 +285,7 @@ async function triggerGitHubAction() {
     if (!ghPat) {
         return;
     }
+    ghPat = ghPat.trim();
 
     btn.disabled = true;
     status.innerHTML = '🚀 已送出執行請求...';
