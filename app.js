@@ -281,11 +281,16 @@ async function triggerGitHubAction() {
     const status = document.getElementById('action-status');
     const btn = document.getElementById('run-btn');
 
-    let ghPat = prompt("安全提示：請輸入您的 GitHub PAT (為保護安全，此金鑰不會被儲存)：");
+    let ghPat = localStorage.getItem('GH_PAT');
     if (!ghPat) {
-        return;
+        ghPat = prompt("請輸入您的 GitHub PAT (輸入後將保存在瀏覽器中)：");
+        if (ghPat) {
+            ghPat = ghPat.trim();
+            localStorage.setItem('GH_PAT', ghPat);
+        } else {
+            return;
+        }
     }
-    ghPat = ghPat.trim();
 
     btn.disabled = true;
     status.innerHTML = '🚀 已送出執行請求...';
@@ -309,7 +314,8 @@ async function triggerGitHubAction() {
 
         if (!response.ok) {
             if (response.status === 401 || response.status === 404) {
-                throw new Error('Token 無效或沒有權限');
+                localStorage.removeItem('GH_PAT');
+                throw new Error('Token 無效，已清除紀錄');
             }
             throw new Error(`API 錯誤: ${response.status}`);
         }
