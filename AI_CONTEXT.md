@@ -23,7 +23,8 @@
 - `dashboard_data.json`：前端 Dashboard 的單一真理來源，包含即時狀態、各項數據、最後降雨時間 (`last_rain_time`)、健康度與完整判斷依據 (reasons)。
 - `history_log.csv`：歷史紀錄檔，包含所有判定數據及判斷原因（第 9 欄）。
 - `index.html` / `app.js` / `style.css`：負責渲染 `dashboard_data.json`，並內建時間衰變檢測、健康度計算、手動立即更新，以及安全的 GitHub PAT 遠端觸發機制。
-- `.github/workflows/monitor.yml`：定義 GitHub Actions 執行環境。目前已移除原生 `schedule`，僅透過 `workflow_dispatch` 接收 cron-job.org 與前端的觸發請求。
+- `.github/workflows/monitor.yml`：定義 GitHub Actions 執行環境。目前已移除原生 `schedule`，僅透過 `workflow_dispatch` 接收 cron-job.org 與前端的觸發請求。若 `inputs.run_mode` 為 `force-weather-check` 則會帶入 `--force` 參數。
+- `calendar_updater.py` 與 `.github/workflows/update_calendar.yml`：每年手動觸發一次的輔助工具，串接開源 API (`ruyut/TaiwanCalendar`) 自動產生明年度的台灣政府行事曆至 `config.json`。
 
 ---
 
@@ -46,7 +47,7 @@
    - 若後端偵測到從 `error` 狀態恢復為 `normal`，會自動將執行次數重置歸零，避免歷史錯誤永久影響健康度。
 6. **前端手動更新與執行**：
    - **🔄 立即更新**：重新 Fetch 最新 JSON 狀態。
-   - **🚀 立即執行檢查**：前端提示輸入 `GH_PAT` (存於 localStorage)，透過 API 呼叫 `workflow_dispatch` 強制觸發 Actions 排程，並於 3 秒後開始輪詢最新 `run_id`。
+   - **🚀 立即執行檢查**：前端提示輸入 `GH_PAT` (存於 localStorage)，透過 API 呼叫 `workflow_dispatch` 並帶入 `run_mode: force-weather-check` 強制觸發 Actions 排程，並於 3 秒後開始輪詢最新 `run_id`。此操作會完全無視時間與假日的阻擋條件。
 
 ---
 
@@ -82,7 +83,8 @@ graph TD
 
 ## 🛡️ 系統穩定性機制
 - **優雅降級 (Graceful Degradation)**：若雨量站資料無法取得，系統會自動切換至「單純以雷達回波」進行降雨判斷，並將 `system_status` 設為 `warning` (顯示黃燈)。若雷達回波也失效，則系統狀態設為 `error` (顯示紅燈) 並發送警報。
-- **雷達效能最佳化**：雷達影像僅下載與解析一次至記憶體，隨後根據不同半徑需求進行分析，大幅縮短執行時間至 5 秒內。
-- **資料自動瘦身**：`history_log.csv` 具備自動清理機制，永遠只保留最新的 5000 筆紀錄，防止長期運作造成檔案過大。
+- **雷達效能最佳化**：雷達影像僅下載與解析一次至記憶體，隨後根據不同半徑需求進行分析，大幅縮短執行時間至極速 (約 1.6 秒)。
+- **資料自動瘦身**：`history_log.csv` 具備自動清理機制，永遠只保留最新的 5000 筆紀錄與 Header，防止長期運作造成檔案過大。
 - **防止狼來了**：一般 API 錯誤會被記錄並 `sys.exit(0)`，只有 `FileNotFoundError` 等致命 I/O 錯誤才會導致 Workflow 亮紅燈 `sys.exit(1)`。
+- **時間型別分離**：`state.json` 嚴格區分字串時間 `last_rain_time` (專供 Dashboard 顯示) 與浮點數時間戳記 `last_rain_timestamp` (專供後端 30 分鐘邏輯計算)，防止型別轉換引發的臭蟲。
 - **信件通報**：發生致命例外錯誤時，發送 Gmail 通知給管理員。
