@@ -174,7 +174,7 @@ def get_weather(station_id, api_key, lat, lon):
     except Exception as e:
         print(f"警告：中央氣象署 API 查詢失敗（原因：{e}），自動切換至備援 Open-Meteo 天氣源...")
         try:
-            return get_weather_open_meteo(lat, lon)
+            return get_weather_open_meteo(lat, lon) + (str(e),)
         except Exception as fallback_err:
             raise RuntimeError(f"主要天氣源與備援天氣源皆查詢失敗。主要錯誤: {e} | 備援錯誤: {fallback_err}")
 
@@ -373,8 +373,11 @@ def main():
             print("目前非營業時間 (07:30-19:30)，不執行檢查。")
             return
 
-        # 檢查環境變數是否設定
         cwa_api_key = get_env_or_secret("CWA_API_KEY")
+        if cwa_api_key:
+            cwa_api_key = cwa_api_key.strip()
+        
+        fallback_error_msg = ""
 
         # 3. 獲取台南市安南區天氣
         lat = config['location']['latitude']
@@ -383,7 +386,12 @@ def main():
         
         # 3.1 讀取雨量計資料
         try:
-            is_raining_gauge, obs_time, precip, source = get_weather(station_id, cwa_api_key, lat, lon)
+            result = get_weather(station_id, cwa_api_key, lat, lon)
+            if len(result) == 5:
+                is_raining_gauge, obs_time, precip, source, fallback_err = result
+                fallback_error_msg = f"氣象署API失敗: {fallback_err}"
+            else:
+                is_raining_gauge, obs_time, precip, source = result
             print(f"雨量計觀測結果: 是否有雨: {is_raining_gauge} | 觀測時間: {obs_time} | 雨量值: {precip} | 來源: {source}")
         except Exception as e:
             print(f"警告：讀取雨量計資料失敗: {e}，雨量計判定為無雨。")
@@ -391,6 +399,7 @@ def main():
             obs_time = now.strftime('%Y-%m-%d %H:%M:%S')
             precip = "未知"
             source = "未明 (讀取失敗)"
+            fallback_error_msg = f"完全無法讀取天氣: {e}"
             
         # 3.2 讀取天氣現象描述
         weather_description = "未知"
@@ -610,7 +619,7 @@ def main():
             "source": source,
             "reasons": current_reasons,
             "system_status": "normal",
-            "error_message": "",
+            "error_message": fallback_error_msg,
             "execution_duration_sec": duration_sec,
             "github_run_id": github_run_id,
             "total_runs": state['total_runs'],
