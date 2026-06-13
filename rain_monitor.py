@@ -172,11 +172,11 @@ def get_weather_description(station_id, api_key):
     obs_time = station.get('ObsTime', {}).get('DateTime', '未知時間')
     return weather.strip(), obs_time
 
-def get_radar_echo(api_key, factory_x, factory_y, radius_px, threshold_diff=20, threshold_count=3):
+def download_radar_image(api_key):
     if not api_key:
-        raise ValueError("CWA_API_KEY 未設定，無法查詢雷達回波圖。")
+        raise ValueError("CWA_API_KEY 未設定，無法查詢雷達回波。")
     
-    # 1. 取得雷達回波圖的最新 URL
+    # 1. 取得雷達回波最新檔案URL
     meta_url = "https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/O-A0058-001"
     params = {
         "Authorization": api_key,
@@ -188,19 +188,22 @@ def get_radar_echo(api_key, factory_x, factory_y, radius_px, threshold_diff=20, 
     
     product_url = meta_data.get('cwaopendata', {}).get('dataset', {}).get('resource', {}).get('ProductURL')
     if not product_url:
-        raise ValueError("未能在 O-A0058-001 檔案資訊中找到 ProductURL")
+        raise ValueError("無法在 O-A0058-001 檔案資料中找到 ProductURL")
         
-    # 2. 下載雷達回波圖 PNG
+    # 2. 下載雷達回波原始PNG
     img_resp = requests.get(product_url, timeout=15)
     img_resp.raise_for_status()
     
-    # 3. 讀取並分析影像像素
+    # 3. 讀取並轉換影像陣列
     img = Image.open(io.BytesIO(img_resp.content))
     img_arr = np.array(img)
     
     if len(img_arr.shape) != 3 or img_arr.shape[2] < 3:
-        raise ValueError(f"雷達影像色彩通道異常，陣列形狀為: {img_arr.shape}")
+        raise ValueError(f"雷達影像色彩通道異常，陣列形狀: {img_arr.shape}")
         
+    return img_arr
+
+def analyze_radar_echo(img_arr, factory_x, factory_y, radius_px, threshold_diff=20, threshold_count=3):
     h, w, _ = img_arr.shape
     y_min = max(0, factory_y - radius_px)
     y_max = min(h, factory_y + radius_px + 1)
@@ -577,6 +580,10 @@ def main():
             success_rate = f"{rate:.1f}%"
         
         # 寫入 V2 Dashboard 資料
+        system_status = "normal"
+        if "異常" in source or "未知" in precip:
+            system_status = "warning"
+            
         dashboard_data = {
             "last_update": exec_time,
             "is_covered": state['is_covered'],
@@ -586,7 +593,7 @@ def main():
             "weather_description": weather_description,
             "source": source,
             "reasons": current_reasons,
-            "system_status": "normal",
+            "system_status": system_status,
             "error_message": fallback_error_msg,
             "execution_duration_sec": duration_sec,
             "github_run_id": github_run_id,

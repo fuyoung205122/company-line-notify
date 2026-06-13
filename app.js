@@ -89,25 +89,25 @@ function updateDashboard(data, historyCsv) {
         heartbeatDotHtml = '<span class="status-dot red heartbeat"></span>';
         sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 系統異常<br><span style="font-size:0.8em; color:#ef4444;">請檢查 GitHub Actions</span>`;
         sysDelay.innerText = '請檢查執行日誌';
+    } else if (data.system_status === 'warning') {
+        sysCard.className = 'health-card warning';
+        heartbeatDotHtml = '<span class="status-dot yellow heartbeat"></span>';
+        sysTitle.innerHTML = `${heartbeatDotHtml} 🟡 雨量站異常<br><span style="font-size:0.8em; color:#f59e0b;">目前使用雷達模式</span>`;
+        sysDelay.innerText = `資料延遲：${diffMins} 分鐘`;
     } else if (diffMins >= 90) {
         sysCard.className = 'health-card error';
         heartbeatDotHtml = '<span class="status-dot red"></span>';
-        sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 排程停止<br><span style="font-size:0.8em; color:#ef4444;">超過 90 分鐘未更新</span>`;
+        sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 系統停止<br><span style="font-size:0.8em; color:#ef4444;">超過 90 分鐘未更新</span>`;
         sysDelay.innerText = `資料延遲：${diffMins} 分鐘`;
     } else if (diffMins >= 45) {
         sysCard.className = 'health-card warning';
         heartbeatDotHtml = '<span class="status-dot yellow heartbeat"></span>';
-        sysTitle.innerHTML = `${heartbeatDotHtml} 🟡 資料延遲<br><span style="font-size:0.8em; color:#f59e0b;">排程可能壅塞</span>`;
+        sysTitle.innerHTML = `${heartbeatDotHtml} 🟡 資料延遲<br><span style="font-size:0.8em; color:#f59e0b;">伺服器可能壅塞</span>`;
         sysDelay.innerText = `資料延遲：${diffMins} 分鐘`;
     } else {
         sysCard.className = 'health-card normal';
         heartbeatDotHtml = '<span class="status-dot green heartbeat"></span>';
-        let sourceHtml = data.source || '中央氣象署';
-        if (sourceHtml.includes('異常')) {
-            sysTitle.innerHTML = `${heartbeatDotHtml} 🟡 雨量站異常<br><span style="font-size:0.8em; color:#f59e0b;">目前使用雷達模式</span>`;
-        } else {
-            sysTitle.innerHTML = `${heartbeatDotHtml} 🟢 正常運作<br><span style="font-size:0.8em; color:#10b981;">資料來源：${sourceHtml}</span>`;
-        }
+        sysTitle.innerHTML = `${heartbeatDotHtml} 🟢 正常運作<br><span style="font-size:0.8em; color:#10b981;">系統健康度良好</span>`;
         sysDelay.innerText = `資料延遲：${diffMins} 分鐘`;
     }
     
