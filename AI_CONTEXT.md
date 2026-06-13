@@ -7,7 +7,7 @@
 
 ## 📌 專案架構
 - **核心目標**：定時監控台南市安南區的天氣，將結果輸出至 GitHub 並透過 **Web Dashboard 靜態網頁** 作為唯一真理來源，提供現場人員隨時查看是否需要加蓋帆布。
-- **運行環境**：部署於 GitHub 儲存庫 (`fuyoung205122/company-line-notify`)，透過 GitHub Actions 排程定時執行（每 30 分鐘一次，避開整點：於每小時的 7, 37 分啟動）。支援前端 `workflow_dispatch` 立即觸發執行。
+- **運行環境**：部署於 GitHub 儲存庫 (`fuyoung205122/company-line-notify`)。為確保定時檢查能絕對準時 (07, 37分)，已停用 GitHub Actions 內建排程，改由 **cron-job.org** 透過 Webhook 呼叫 `workflow_dispatch` 觸發執行。前端儀表板亦支援 `workflow_dispatch` 立即手動觸發。
 - **依賴外部服務**：
   - **主要天氣源**：中華民國中央氣象署 API。
   - **備援天氣源**：當雨量站故障時，單獨以雷達回波作為判斷依據。
@@ -20,10 +20,10 @@
 - `rain_monitor.py`：主程式邏輯，包含氣象數據抓取、雷達圖像素分析、時間假日判斷，並產生 `dashboard_data.json` 與寫入歷史紀錄。包含環境變數啟動診斷與錯誤安全降級機制。
 - `config.json`：存放地理位置、信件收件人、東陽 2026 行事曆設定及相關門檻。
 - `state.json`：紀錄機器人當前狀態，包含 `is_covered`、`last_rain_time`、健康度統計 (`total_runs`, `successful_runs`) 及 `last_status`。
-- `dashboard_data.json`：前端 Dashboard 的單一真理來源，包含即時狀態、各項數據、健康度與完整判斷依據 (reasons)。
+- `dashboard_data.json`：前端 Dashboard 的單一真理來源，包含即時狀態、各項數據、最後降雨時間 (`last_rain_time`)、健康度與完整判斷依據 (reasons)。
 - `history_log.csv`：歷史紀錄檔，包含所有判定數據及判斷原因（第 9 欄）。
 - `index.html` / `app.js` / `style.css`：負責渲染 `dashboard_data.json`，並內建時間衰變檢測、健康度計算、手動立即更新，以及安全的 GitHub PAT 遠端觸發機制。
-- `.github/workflows/monitor.yml`：定義 GitHub Actions 執行排程與 `workflow_dispatch` 觸發設定。
+- `.github/workflows/monitor.yml`：定義 GitHub Actions 執行環境。目前已移除原生 `schedule`，僅透過 `workflow_dispatch` 接收 cron-job.org 與前端的觸發請求。
 
 ---
 
@@ -57,7 +57,7 @@ graph TD
     User((使用者)) -->|點擊立即執行| JS[app.js]
     JS -->|GH_PAT POST API| Trigger
     
-    Trigger[GitHub 雲端排程 7,37分/手動] --> Exec[rain_monitor.py]
+    Trigger[cron-job.org 準點排程 7,37分/手動] --> Exec[rain_monitor.py]
     Exec -->|1. 讀取| Config[(config.json)]
     Exec -->|2. 讀取| State[(state.json)]
     Exec -->|3. GET 數據| CWA[中央氣象署 API]
