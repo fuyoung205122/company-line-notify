@@ -1,24 +1,21 @@
 {
-  "last_update": "2026-06-13 11:45:28",
+  "last_update": "2026-06-13 12:01:05",
   "is_covered": false,
-  "rainfall": "0.0 mm",
+  "rainfall": "--",
   "radar_pixels": 0,
   "max_dbz": 0,
-  "weather_description": "多雲",
-  "source": "中央氣象署 (安南站)",
+  "weather_description": "未知",
+  "source": "錯誤",
   "reasons": [
-    "☑ 雨量 = 0",
-    "☑ 雷達回波低於門檻",
-    "☑ dBZ 低於門檻",
-    "因此判定暫不需加蓋"
+    "系統發生內部錯誤",
+    "已記錄於後端日誌"
   ],
-  "system_status": "normal",
-  "error_message": "",
-  "execution_duration_sec": 2.9,
-  "github_run_id": "27455596013",
-  "total_runs": 16,
+  "system_status": "error",
+  "error_message": "系統發生致命錯誤：系統異常：雨量計與雷達皆無法取得資料。詳細錯誤：氣象署雨量站連線失敗: HTTPSConnectionPool(host='opendata.cwa.gov.tw', port=443): Max retries exceeded with url: /api/v1/rest/datastore/O-A0002-001?Authorization=CWA-6C975A83-706E-4AA9-B49C-137294C4F587&format=JSON&StationId=C2O950 (Caused by NewConnectionError(\"HTTPSConnection(host='opendata.cwa.gov.tw', port=443): Failed to establish a new connection: [Errno 111] Connection refused\")) | 雷達亦失敗: name 'get_radar_echo' is not defined",
+  "execution_duration_sec": 16.02,
+  "github_run_id": "27455931349",
+  "total_runs": 17,
   "successful_runs": 16,
-  "success_rate": "100.0%",
-  "last_success_time": "2026-06-13 11:45:28",
-  "last_rain_time": null
+  "success_rate": "94.1%",
+  "last_success_time": "2026-06-13 11:45:28"
 }
