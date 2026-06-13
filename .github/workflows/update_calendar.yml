@@ -1,0 +1,44 @@
+name: Update Taiwan Calendar
+
+on:
+  workflow_dispatch:
+    inputs:
+      year:
+        description: '要抓取的行事曆年份 (例如 2027)'
+        required: true
+        default: '2027'
+
+jobs:
+  update-calendar:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Run calendar updater
+      run: |
+        python calendar_updater.py --year ${{ github.event.inputs.year }}
+
+    - name: Commit and Push changes
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        
+        # Check if config.json has changed
+        if git diff --exit-code config.json; then
+          echo "No changes in config.json. Calendar is already up-to-date."
+        else
+          git add config.json
+          git commit -m "chore: auto-update calendar for ${{ github.event.inputs.year }}"
+          git push
+          echo "Successfully updated and pushed calendar for ${{ github.event.inputs.year }}"
+        fi
