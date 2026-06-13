@@ -600,7 +600,8 @@ def main():
             "total_runs": state['total_runs'],
             "successful_runs": state['successful_runs'],
             "success_rate": success_rate,
-            "last_success_time": state['last_success_time']
+            "last_success_time": state['last_success_time'],
+            "last_rain_time": state.get('last_rain_time')
         }
         save_json(DASHBOARD_FILE, dashboard_data)
         

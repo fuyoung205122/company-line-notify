@@ -144,6 +144,24 @@ function updateDashboard(data, historyCsv) {
         runIdEl.removeAttribute('href');
     }
     
+    // Update Last Rain Time
+    const lastRainTimeEl = document.getElementById('sys-last-rain-time');
+    const lastRainAgoEl = document.getElementById('sys-last-rain-ago');
+    if (data.last_rain_time && data.last_rain_time !== '--') {
+        lastRainTimeEl.innerText = data.last_rain_time;
+        const rainTimeStr = data.last_rain_time.replace(/-/g, '/');
+        const rainTime = new Date(rainTimeStr);
+        const diffRainMins = Math.floor((now - rainTime) / 60000);
+        if (diffRainMins >= 0) {
+            lastRainAgoEl.innerText = `距今：${diffRainMins} 分鐘`;
+        } else {
+            lastRainAgoEl.innerText = `距今：-- 分鐘`;
+        }
+    } else {
+        lastRainTimeEl.innerText = '最近無降雨紀錄';
+        lastRainAgoEl.innerText = '距今：--';
+    }
+    
     // Update Status Card
     const statusCard = document.getElementById('status-card');
     const statusTitle = document.getElementById('status-title');
