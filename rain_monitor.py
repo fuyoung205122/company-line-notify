@@ -263,6 +263,19 @@ def append_history_log(exec_time, precip, pixels_2km, pixels_5km, max_dbz, cond_
     except Exception as e:
         print(f"寫入歷史日誌失敗: {e}")
 
+def cleanup_history_log():
+    try:
+        if not os.path.isfile(LOG_FILE):
+            return
+        with open(LOG_FILE, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+        if len(lines) > 5001:
+            new_lines = [lines[0]] + lines[-5000:]
+            with open(LOG_FILE, 'w', encoding='utf-8', newline='') as f:
+                f.writelines(new_lines)
+    except Exception as e:
+        print(f"清理歷史紀錄失敗: {e}")
+
 def main():
     try:
         start_time_ts = time.time()
@@ -302,6 +315,7 @@ def main():
             print(f"執行每日跨日重置 (上次重置日期: {state.get('last_reset_date')} -> 今日: {today_str})...")
             state['is_covered'] = False
             state['last_rain_time'] = None
+            state['last_rain_timestamp'] = None
             state['last_reset_date'] = today_str
             save_json(STATE_FILE, state)
             print("狀態檔重置完成。")
@@ -401,14 +415,15 @@ def main():
         try:
             if cwa_api_key:
                 # 取得 2km 回波資料供記錄使用
-                _, radar_pixels_2km, _ = get_radar_echo(
-                    cwa_api_key, fact_x, fact_y, 6, color_diff_thres, 1
+                img_arr = download_radar_image(cwa_api_key)
+                _, radar_pixels_2km, _ = analyze_radar_echo(
+                    img_arr, fact_x, fact_y, 6, color_diff_thres, 1
                 )
-                has_radar_echo_cover, radar_pixels_cover, max_dbz_cover = get_radar_echo(
-                    cwa_api_key, fact_x, fact_y, cov_rad, color_diff_thres, echo_pixel_thres_cov
+                has_radar_echo_cover, radar_pixels_cover, max_dbz_cover = analyze_radar_echo(
+                    img_arr, fact_x, fact_y, cov_rad, color_diff_thres, echo_pixel_thres_cov
                 )
-                has_radar_echo_uncover, radar_pixels_uncover, max_dbz_uncover = get_radar_echo(
-                    cwa_api_key, fact_x, fact_y, uncov_rad, color_diff_thres, echo_pixel_thres_uncov
+                has_radar_echo_uncover, radar_pixels_uncover, max_dbz_uncover = analyze_radar_echo(
+                    img_arr, fact_x, fact_y, uncov_rad, color_diff_thres, echo_pixel_thres_uncov
                 )
                 print(f"雷達回波檢測: 5km半徑內是否有回波: {has_radar_echo_cover} (回波點數: {radar_pixels_cover}) | 5km半徑內是否有回波: {has_radar_echo_uncover} (回波點數: {radar_pixels_uncover})")
             else:
@@ -474,7 +489,8 @@ def main():
         
         if has_rain_now:
             # 只要判定有降雨，就持續更新最後降雨時間
-            state['last_rain_time'] = current_time_ts
+            state['last_rain_time'] = now.strftime('%Y-%m-%d %H:%M:%S')
+            state['last_rain_timestamp'] = current_time_ts
             
             if not state['is_covered']:
                 # 狀態轉移: 🟢 -> 🔴
@@ -492,7 +508,7 @@ def main():
                 max_dbz_thres_uncov = config.get('radar_settings', {}).get('max_dbz_threshold_uncover', 30)
                 cond3 = (not has_radar_echo_uncover) and (max_dbz_uncover < max_dbz_thres_uncov)
                 # 3. 連續30分鐘無降雨 (最後一次下雨時間已過 1800 秒)
-                last_rain = state.get('last_rain_time')
+                last_rain = state.get('last_rain_timestamp')
                 if last_rain is not None:
                     diff_seconds = current_time_ts - last_rain
                     diff_minutes = diff_seconds / 60.0
@@ -509,6 +525,7 @@ def main():
                     print("👉 已停雨且滿足所有解除條件！狀態轉換為解除。")
                     state['is_covered'] = False
                     state['last_rain_time'] = None
+                    state['last_rain_timestamp'] = None
                     current_reasons = [
                         "☑ 測站無雨",
                         "☑ 雷達回波無雲層接近",
@@ -539,7 +556,7 @@ def main():
         if state_before:
             max_dbz_thres_uncov = config.get('radar_settings', {}).get('max_dbz_threshold_uncover', 30)
             if not is_raining_gauge and (not has_radar_echo_uncover) and (max_dbz_uncover < max_dbz_thres_uncov):
-                last_rain = state.get('last_rain_time')
+                last_rain = state.get('last_rain_timestamp')
                 if last_rain is None or (current_time_ts - last_rain) >= 1800:
                     cond_uncover = True
                     
@@ -557,6 +574,7 @@ def main():
             action,
             reason_str
         )
+        cleanup_history_log()
             
         # 如果上一次是 error，這次恢復 normal，則重置統計
         if state.get('last_status') == 'error':

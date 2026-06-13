@@ -56,6 +56,7 @@ function updateDashboard(data, historyCsv) {
     const now = new Date();
     const diffMs = now - updateTime;
     const diffMins = Math.floor(diffMs / 60000);
+    const delayText = diffMins <= 1 ? "資料即時" : `資料延遲：${diffMins} 分鐘`;
     
     const sysCard = document.getElementById('sys-status-card');
     const sysTitle = document.getElementById('sys-status-title');
@@ -92,23 +93,23 @@ function updateDashboard(data, historyCsv) {
     } else if (data.system_status === 'warning') {
         sysCard.className = 'health-card warning';
         heartbeatDotHtml = '<span class="status-dot yellow heartbeat"></span>';
-        sysTitle.innerHTML = `${heartbeatDotHtml} 🟡 雨量站異常<br><span style="font-size:0.8em; color:#f59e0b;">目前使用雷達模式</span>`;
-        sysDelay.innerText = `資料延遲：${diffMins} 分鐘`;
+        sysTitle.innerHTML = `${heartbeatDotHtml} ⚠️ 雨量站異常<br><span style="font-size:0.8em; color:#f59e0b;">已切換雷達模式</span>`;
+        sysDelay.innerText = delayText;
     } else if (diffMins >= 90) {
         sysCard.className = 'health-card error';
         heartbeatDotHtml = '<span class="status-dot red"></span>';
         sysTitle.innerHTML = `${heartbeatDotHtml} 🔴 系統停止<br><span style="font-size:0.8em; color:#ef4444;">超過 90 分鐘未更新</span>`;
-        sysDelay.innerText = `資料延遲：${diffMins} 分鐘`;
+        sysDelay.innerText = delayText;
     } else if (diffMins >= 45) {
         sysCard.className = 'health-card warning';
         heartbeatDotHtml = '<span class="status-dot yellow heartbeat"></span>';
-        sysTitle.innerHTML = `${heartbeatDotHtml} 🟡 資料延遲<br><span style="font-size:0.8em; color:#f59e0b;">伺服器可能壅塞</span>`;
-        sysDelay.innerText = `資料延遲：${diffMins} 分鐘`;
+        sysTitle.innerHTML = `${heartbeatDotHtml} ⚠️ 資料延遲<br><span style="font-size:0.8em; color:#f59e0b;">伺服器可能繁忙</span>`;
+        sysDelay.innerText = delayText;
     } else {
         sysCard.className = 'health-card normal';
         heartbeatDotHtml = '<span class="status-dot green heartbeat"></span>';
-        sysTitle.innerHTML = `${heartbeatDotHtml} 🟢 正常運作<br><span style="font-size:0.8em; color:#10b981;">系統健康度良好</span>`;
-        sysDelay.innerText = `資料延遲：${diffMins} 分鐘`;
+        sysTitle.innerHTML = `${heartbeatDotHtml} 🟢 運作正常<br><span style="font-size:0.8em; color:#10b981;">系統健康度良好</span>`;
+        sysDelay.innerText = delayText;
     }
     
     document.getElementById('sys-last-success').innerText = `最後成功：${data.last_success_time || '--'}`;
