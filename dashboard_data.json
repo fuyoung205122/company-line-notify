@@ -1,5 +1,5 @@
 {
-  "last_update": "2026-06-13 09:17:59",
+  "last_update": "2026-06-13 09:24:38",
   "is_covered": false,
   "rainfall": "未知",
   "radar_pixels": 0,
@@ -14,10 +14,10 @@
   ],
   "system_status": "normal",
   "error_message": "氣象署雨量站連線失敗: 氣象署 API 回傳資料中找不到測站代號: INVALID",
-  "execution_duration_sec": 16.14,
-  "github_run_id": "27452207504",
-  "total_runs": 9,
-  "successful_runs": 9,
+  "execution_duration_sec": 9.53,
+  "github_run_id": "27452377632",
+  "total_runs": 10,
+  "successful_runs": 10,
   "success_rate": "100.0%",
-  "last_success_time": "2026-06-13 09:17:59"
+  "last_success_time": "2026-06-13 09:24:38"
 }
