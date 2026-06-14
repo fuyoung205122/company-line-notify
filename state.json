@@ -1,10 +1,10 @@
 {
   "is_covered": true,
-  "last_rain_time": "2026-06-15 07:30:40",
+  "last_rain_time": "2026-06-15 07:37:57",
   "last_reset_date": "2026-06-15",
-  "total_runs": 4,
-  "successful_runs": 4,
-  "last_success_time": "2026-06-15 07:30:40",
+  "total_runs": 5,
+  "successful_runs": 5,
+  "last_success_time": "2026-06-15 07:37:57",
   "last_status": "normal",
-  "last_rain_timestamp": 1781479840.157636
+  "last_rain_timestamp": 1781480277.664537
 }
