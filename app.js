@@ -247,24 +247,27 @@ function updateDashboard(data, historyCsv) {
     // Update LINE message text
     const lineTextarea = document.getElementById('line-message-text');
     if (lineTextarea) {
-        let msg = `🔔【即時觀測數據】\n`;
-        msg += `📊 觀測時間：${data.last_update}\n`;
-        msg += `💧 當前雨量：${data.rainfall || '0.0 mm'}\n`;
-        msg += `📝 天氣現象：${data.weather_description || '無'}\n`;
-        msg += `📡 雷達回波：5km半徑內有回波 (${data.radar_pixels !== undefined ? data.radar_pixels : 0}點)\n`;
-        msg += `🌐 資料來源：${data.source || '中央氣象署 (安南站)'}\n`;
-        msg += `======================\n\n`;
+        let dataStr = `🔔【即時觀測數據】\n`;
+        dataStr += `📊 觀測時間：${data.last_update}\n`;
+        dataStr += `💧 當前雨量：${data.rainfall || '0.0 mm'}\n`;
+        dataStr += `📝 天氣現象：${data.weather_description || '無'}\n`;
+        dataStr += `📡 雷達回波：5km半徑內有回波 (${data.radar_pixels !== undefined ? data.radar_pixels : 0}點)\n`;
+        dataStr += `🌐 資料來源：${data.source || '中央氣象署 (安南站)'}\n`;
 
+        let finalMsg = "";
         if (isCovered) {
-            msg += `🌧️🌧️下雨通知： 🔴 請加蓋帆布\n`;
-            msg += `目前廠區已開始降雨，後警、物流及科技廠今日所有載運模具車輛（含廠內載運）請確實加蓋帆布後再進行運送作業。\n`;
-            msg += `後續將依天氣狀況滾動調整，如有異動將另行通知。`;
+            finalMsg += dataStr + `======================\n\n`;
+            finalMsg += `🌧️🌧️下雨通知： 🔴 請加蓋帆布\n`;
+            finalMsg += `目前廠區已開始降雨，後警、物流及科技廠今日所有載運模具車輛（含廠內載運）請確實加蓋帆布後再進行運送作業。\n`;
+            finalMsg += `後續將依天氣狀況滾動調整，如有異動將另行通知。`;
         } else {
-            msg += `🟢 停雨通知： 暫不需加蓋帆布\n`;
-            msg += `目前廠區無明顯降雨，維持正常作業。\n`;
-            msg += `後續將依天氣狀況滾動調整，如有異動將另行通知。`;
+            finalMsg += `☀️☀️雨停通知： \n`;
+            finalMsg += `🟢 暫不加蓋帆布\n\n`;
+            finalMsg += `目前降雨機率已降低，後警、物流及科技廠載運模具（含廠內載運）暫時無須加蓋帆布。\n\n`;
+            finalMsg += `後續如天氣狀況有變化或相關措施需調整，將另行通知。 \n\n\n\n`;
+            finalMsg += dataStr;
         }
-        lineTextarea.value = msg;
+        lineTextarea.value = finalMsg;
     }
 }
 
