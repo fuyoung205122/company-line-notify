@@ -11,11 +11,11 @@
     "radar_settings": {
         "cover_radius_px": 14,
         "uncover_radius_px": 14,
-        "echo_pixel_threshold_cover": 10,
-        "echo_pixel_threshold_uncover": 5,
+        "echo_pixel_threshold_cover": 30,
+        "echo_pixel_threshold_uncover": 15,
         "color_diff_threshold": 20,
-        "max_dbz_threshold_cover": 35,
-        "max_dbz_threshold_uncover": 30
+        "max_dbz_threshold_cover": 50,
+        "max_dbz_threshold_uncover": 40
     },
     "email": {
         "recipient": "fuyoung1006@gmail.com"

@@ -504,21 +504,21 @@ def main():
                 # 4.2 檢查是否滿足解除加蓋條件 (必須全部滿足)
                 # 1. 雨量計判定無雨
                 cond2 = not is_raining_gauge
-                # 2. 未來無降雨接近 (雷達回波 5km 內點數小於 10，且最大 dBZ 小於 30)
-                max_dbz_thres_uncov = config.get('radar_settings', {}).get('max_dbz_threshold_uncover', 30)
+                # 2. 未來無降雨接近 (雷達回波 5km 內點數小於 15，且最大 dBZ 小於 40)
+                max_dbz_thres_uncov = config.get('radar_settings', {}).get('max_dbz_threshold_uncover', 40)
                 cond3 = (not has_radar_echo_uncover) and (max_dbz_uncover < max_dbz_thres_uncov)
-                # 3. 連續30分鐘無降雨 (最後一次下雨時間已過 1800 秒)
+                # 3. 連續20分鐘無降雨 (最後一次下雨時間已過 1200 秒)
                 last_rain = state.get('last_rain_timestamp')
                 if last_rain is not None:
                     diff_seconds = current_time_ts - last_rain
                     diff_minutes = diff_seconds / 60.0
-                    cond4 = diff_seconds >= 1800
-                    print(f"目前無雨。距離最後一次下雨已過: {diff_minutes:.1f} 分鐘 (解除需滿 30 分鐘)。")
+                    cond4 = diff_seconds >= 1200
+                    print(f"目前無雨。距離最後一次下雨已過: {diff_minutes:.1f} 分鐘 (解除需滿 20 分鐘)。")
                 else:
                     cond4 = True
                     print("異常：沒有最後降雨時間紀錄，防呆預設允許解除。")
                 
-                print(f"解除條件檢查: 雨量計無雨={cond2} | 雷達雙軌無雨={cond3} | 已過30分鐘={cond4}")
+                print(f"解除條件檢查: 雨量計無雨={cond2} | 雷達雙軌無雨={cond3} | 已過20分鐘={cond4}")
                 
                 if cond2 and cond3 and cond4:
                     # 狀態轉移: 🔴 -> 🟢
@@ -529,7 +529,7 @@ def main():
                     current_reasons = [
                         "☑ 測站無雨",
                         "☑ 雷達回波無雲層接近",
-                        "☑ 已連續 30 分鐘無降雨",
+                        "☑ 已連續 20 分鐘無降雨",
                         "因此滿足解除加蓋條件"
                     ]
                 else:
@@ -538,7 +538,7 @@ def main():
                     uncover_reasons = []
                     if not cond2: uncover_reasons.append("☒ 測站仍有雨")
                     if not cond3: uncover_reasons.append("☒ 雷達回波仍有雲層接近")
-                    if not cond4: uncover_reasons.append(f"☒ 停雨未滿 30 分鐘 (已停 {diff_minutes:.1f} 分)")
+                    if not cond4: uncover_reasons.append(f"☒ 停雨未滿 20 分鐘 (已停 {diff_minutes:.1f} 分)")
                     uncover_reasons.append("因此不滿足解除條件，維持加蓋")
                     current_reasons = uncover_reasons
                     
@@ -554,10 +554,10 @@ def main():
         # 計算是否符合解除條件 (作為紀錄)
         cond_uncover = False
         if state_before:
-            max_dbz_thres_uncov = config.get('radar_settings', {}).get('max_dbz_threshold_uncover', 30)
+            max_dbz_thres_uncov = config.get('radar_settings', {}).get('max_dbz_threshold_uncover', 40)
             if not is_raining_gauge and (not has_radar_echo_uncover) and (max_dbz_uncover < max_dbz_thres_uncov):
                 last_rain = state.get('last_rain_timestamp')
-                if last_rain is None or (current_time_ts - last_rain) >= 1800:
+                if last_rain is None or (current_time_ts - last_rain) >= 1200:
                     cond_uncover = True
                     
         # 使用者要求：每次執行皆記錄
