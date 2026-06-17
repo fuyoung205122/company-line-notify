@@ -256,10 +256,10 @@ function updateDashboard(data, historyCsv) {
 
         let finalMsg = "";
         if (isCovered) {
-            finalMsg += dataStr + `======================\n\n`;
             finalMsg += `🌧️🌧️下雨通知： 🔴 請加蓋帆布\n`;
             finalMsg += `目前廠區已開始降雨，後警、物流及科技廠今日所有載運模具車輛（含廠內載運）請確實加蓋帆布後再進行運送作業。\n`;
-            finalMsg += `後續將依天氣狀況滾動調整，如有異動將另行通知。`;
+            finalMsg += `後續將依天氣狀況滾動調整，如有異動將另行通知。\n`;
+            finalMsg += dataStr + `======================\n`;
         } else {
             finalMsg += `☀️☀️雨停通知： \n`;
             finalMsg += `🟢 暫不加蓋帆布\n\n`;
