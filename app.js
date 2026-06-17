@@ -243,6 +243,29 @@ function updateDashboard(data, historyCsv) {
         `;
         tbody.appendChild(tr);
     });
+
+    // Update LINE message text
+    const lineTextarea = document.getElementById('line-message-text');
+    if (lineTextarea) {
+        let msg = `🔔【即時觀測數據】\n`;
+        msg += `📊 觀測時間：${data.last_update}\n`;
+        msg += `💧 當前雨量：${data.rainfall || '0.0 mm'}\n`;
+        msg += `📝 天氣現象：${data.weather_description || '無'}\n`;
+        msg += `📡 雷達回波：5km半徑內有回波 (${data.radar_pixels !== undefined ? data.radar_pixels : 0}點)\n`;
+        msg += `🌐 資料來源：${data.source || '中央氣象署 (安南站)'}\n`;
+        msg += `======================\n\n`;
+
+        if (isCovered) {
+            msg += `🌧️🌧️下雨通知： 🔴 請加蓋帆布\n`;
+            msg += `目前廠區已開始降雨，後警、物流及科技廠今日所有載運模具車輛（含廠內載運）請確實加蓋帆布後再進行運送作業。\n`;
+            msg += `後續將依天氣狀況滾動調整，如有異動將另行通知。`;
+        } else {
+            msg += `🟢 停雨通知： 暫不需加蓋帆布\n`;
+            msg += `目前廠區無明顯降雨，維持正常作業。\n`;
+            msg += `後續將依天氣狀況滾動調整，如有異動將另行通知。`;
+        }
+        lineTextarea.value = msg;
+    }
 }
 
 // Initial fetch
@@ -355,4 +378,20 @@ async function triggerGitHubAction() {
 
 document.getElementById('run-btn').addEventListener('click', triggerGitHubAction);
 
-
+document.addEventListener('DOMContentLoaded', () => {
+    const copyBtn = document.getElementById('copy-line-btn');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+            const textarea = document.getElementById('line-message-text');
+            textarea.select();
+            document.execCommand('copy');
+            const originalText = '複製文字';
+            copyBtn.innerText = '✅ 已複製！';
+            copyBtn.style.background = '#10b981';
+            setTimeout(() => {
+                copyBtn.innerText = originalText;
+                copyBtn.style.background = '#3b82f6';
+            }, 2000);
+        });
+    }
+});
