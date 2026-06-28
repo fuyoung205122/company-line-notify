@@ -1,22 +1,24 @@
 {
-  "last_update": "2026-06-27 08:35:43",
-  "is_covered": true,
-  "rainfall": "0.5 mm",
-  "radar_pixels": 613,
-  "max_dbz": 40,
-  "weather_description": "陰有雨",
+  "last_update": "2026-06-29 07:37:21",
+  "is_covered": false,
+  "rainfall": "0.0 mm",
+  "radar_pixels": 0,
+  "max_dbz": 0,
+  "weather_description": "多雲",
   "source": "中央氣象署 (安南站)",
   "reasons": [
-    "☑ 測站有雨",
-    "☑ 雷達回波達標 (613點)"
+    "☑ 雨量 = 0",
+    "☑ 雷達回波低於門檻",
+    "☑ dBZ 低於門檻",
+    "因此判定暫不需加蓋"
   ],
   "system_status": "normal",
   "error_message": "",
-  "execution_duration_sec": 5.42,
-  "github_run_id": "28273035604",
-  "total_runs": 197,
-  "successful_runs": 197,
+  "execution_duration_sec": 3.99,
+  "github_run_id": "28339870797",
+  "total_runs": 198,
+  "successful_runs": 198,
   "success_rate": "100.0%",
-  "last_success_time": "2026-06-27 08:35:43",
-  "last_rain_time": "2026-06-27 08:35:43"
+  "last_success_time": "2026-06-29 07:37:21",
+  "last_rain_time": null
 }
