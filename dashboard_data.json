@@ -1,5 +1,5 @@
 {
-  "last_update": "2026-07-02 10:07:18",
+  "last_update": "2026-07-02 10:37:19",
   "is_covered": false,
   "rainfall": "未知",
   "radar_pixels": 0,
@@ -14,11 +14,11 @@
   ],
   "system_status": "warning",
   "error_message": "氣象署雨量站連線失敗: 氣象署 API 回傳資料中找不到測站代號: C2O950",
-  "execution_duration_sec": 6.9,
-  "github_run_id": "28560372654",
-  "total_runs": 275,
-  "successful_runs": 275,
+  "execution_duration_sec": 6.22,
+  "github_run_id": "28561417868",
+  "total_runs": 276,
+  "successful_runs": 276,
   "success_rate": "100.0%",
-  "last_success_time": "2026-07-02 10:07:18",
+  "last_success_time": "2026-07-02 10:37:19",
   "last_rain_time": null
 }
