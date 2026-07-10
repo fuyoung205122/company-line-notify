@@ -1,5 +1,5 @@
 {
-  "last_update": "2026-07-10 16:37:20",
+  "last_update": "2026-07-10 17:07:21",
   "is_covered": false,
   "rainfall": "0.0 mm",
   "radar_pixels": 0,
@@ -7,18 +7,18 @@
   "weather_description": "陰",
   "source": "中央氣象署 (安南站)",
   "reasons": [
-    "☑ 測站無雨",
-    "☑ 雷達回波無雲層接近",
-    "☑ 已連續 20 分鐘無降雨",
-    "因此滿足解除加蓋條件"
+    "☑ 雨量 = 0",
+    "☑ 雷達回波低於門檻",
+    "☑ dBZ 低於門檻",
+    "因此判定暫不需加蓋"
   ],
   "system_status": "normal",
   "error_message": "",
-  "execution_duration_sec": 6.87,
-  "github_run_id": "29080343148",
-  "total_runs": 431,
-  "successful_runs": 431,
+  "execution_duration_sec": 9.41,
+  "github_run_id": "29081973902",
+  "total_runs": 432,
+  "successful_runs": 432,
   "success_rate": "100.0%",
-  "last_success_time": "2026-07-10 16:37:20",
+  "last_success_time": "2026-07-10 17:07:21",
   "last_rain_time": null
 }
