@@ -1,24 +1,21 @@
 {
-  "last_update": "2026-08-10 10:07:24",
+  "last_update": "2026-08-10 10:38:02",
   "is_covered": false,
-  "rainfall": "0.0 mm",
+  "rainfall": "--",
   "radar_pixels": 0,
   "max_dbz": 0,
-  "weather_description": "陰",
-  "source": "中央氣象署 (安南站)",
+  "weather_description": "未知",
+  "source": "錯誤",
   "reasons": [
-    "☑ 雨量 = 0",
-    "☑ 雷達回波低於門檻",
-    "☑ dBZ 低於門檻",
-    "因此判定暫不需加蓋"
+    "系統發生內部錯誤",
+    "已記錄於後端日誌"
   ],
-  "system_status": "normal",
-  "error_message": "",
-  "execution_duration_sec": 4.38,
-  "github_run_id": "31348905896",
-  "total_runs": 921,
+  "system_status": "error",
+  "error_message": "系統發生致命錯誤：系統異常：雨量計與雷達皆無法取得資料。詳細錯誤：氣象署雨量站連線失敗: HTTPSConnectionPool(host='opendata.cwa.gov.tw', port=443): Max retries exceeded with url: /api/v1/rest/datastore/O-A0002-001?Authorization=CWA-6C975A83-706E-4AA9-B49C-137294C4F587&format=JSON&StationId=C2O950 (Caused by ConnectTimeoutError(<HTTPSConnection(host='opendata.cwa.gov.tw', port=443) at 0x7f61bf7aceb0>, 'Connection to opendata.cwa.gov.tw timed out. (connect timeout=10)')) | 雷達亦失敗: HTTPSConnectionPool(host='opendata.cwa.gov.tw', port=443): Max retries exceeded with url: /fileapi/v1/opendataapi/O-A0058-001?Authorization=CWA-6C975A83-706E-4AA9-B49C-137294C4F587&format=JSON (Caused by ConnectTimeoutError(<HTTPSConnection(host='opendata.cwa.gov.tw', port=443) at 0x7f61bf7adfc0>, 'Connection to opendata.cwa.gov.tw timed out. (connect timeout=10)'))",
+  "execution_duration_sec": 31.59,
+  "github_run_id": "31350282635",
+  "total_runs": 922,
   "successful_runs": 921,
-  "success_rate": "100.0%",
-  "last_success_time": "2026-08-10 10:07:24",
-  "last_rain_time": null
+  "success_rate": "99.9%",
+  "last_success_time": "2026-08-10 10:07:24"
 }
