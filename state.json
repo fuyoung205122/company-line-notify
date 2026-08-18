@@ -2,9 +2,9 @@
   "is_covered": false,
   "last_rain_time": null,
   "last_reset_date": "2026-08-18",
-  "total_runs": 143,
+  "total_runs": 144,
   "successful_runs": 143,
   "last_success_time": "2026-08-18 10:07:22",
-  "last_status": "normal",
+  "last_status": "error",
   "last_rain_timestamp": null
 }
