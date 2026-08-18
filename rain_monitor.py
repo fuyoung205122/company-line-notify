@@ -89,6 +89,25 @@ def send_error_email(error_msg, config):
 
 
 
+def requests_get_with_retry(url, params=None, timeout=15, max_retries=3, backoff_factor=2):
+    """
+    自帶自動重試機制的 HTTP GET 請求函式。
+    當遇到連線超時、讀取超時或伺服器異常時自動重試，提升對中央氣象署 API 的穩定度。
+    """
+    for attempt in range(1, max_retries + 1):
+        try:
+            resp = requests.get(url, params=params, timeout=timeout)
+            resp.raise_for_status()
+            return resp
+        except requests.exceptions.RequestException as e:
+            if attempt < max_retries:
+                sleep_time = backoff_factor * attempt
+                print(f"網路連線異常 ({e})，正在進行第 {attempt}/{max_retries} 次重試 (等待 {sleep_time} 秒)...")
+                time.sleep(sleep_time)
+            else:
+                print(f"重試 {max_retries} 次後仍連線失敗: {e}")
+                raise e
+
 def get_weather(station_id, api_key, lat, lon):
     # 優先嘗試中央氣象署 API
     try:
@@ -102,8 +121,7 @@ def get_weather(station_id, api_key, lat, lon):
             "StationId": station_id
         }
         
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
+        response = requests_get_with_retry(url, params=params, timeout=15, max_retries=3)
         data = response.json()
         
         stations = data.get('records', {}).get('Station', [])
@@ -160,8 +178,7 @@ def get_weather_description(station_id, api_key):
         "format": "JSON",
         "StationId": station_id
     }
-    response = requests.get(url, params=params, timeout=10)
-    response.raise_for_status()
+    response = requests_get_with_retry(url, params=params, timeout=15, max_retries=3)
     data = response.json()
     stations = data.get('records', {}).get('Station', [])
     if not stations:
@@ -182,8 +199,7 @@ def download_radar_image(api_key):
         "Authorization": api_key,
         "format": "JSON"
     }
-    meta_resp = requests.get(meta_url, params=params, timeout=10)
-    meta_resp.raise_for_status()
+    meta_resp = requests_get_with_retry(meta_url, params=params, timeout=15, max_retries=3)
     meta_data = meta_resp.json()
     
     product_url = meta_data.get('cwaopendata', {}).get('dataset', {}).get('resource', {}).get('ProductURL')
@@ -191,8 +207,7 @@ def download_radar_image(api_key):
         raise ValueError("無法在 O-A0058-001 檔案資料中找到 ProductURL")
         
     # 2. 下載雷達回波原始PNG
-    img_resp = requests.get(product_url, timeout=15)
-    img_resp.raise_for_status()
+    img_resp = requests_get_with_retry(product_url, timeout=20, max_retries=3)
     
     # 3. 讀取並轉換影像陣列
     img = Image.open(io.BytesIO(img_resp.content))
