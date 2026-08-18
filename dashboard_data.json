@@ -1,5 +1,5 @@
 {
-  "last_update": "2026-08-18 12:37:51",
+  "last_update": "2026-08-18 13:07:56",
   "is_covered": false,
   "rainfall": "--",
   "radar_pixels": 0,
@@ -11,11 +11,11 @@
     "已記錄於後端日誌"
   ],
   "system_status": "error",
-  "error_message": "系統發生致命錯誤：系統異常：雨量計與雷達皆無法取得資料。詳細錯誤：氣象署雨量站連線失敗: HTTPSConnectionPool(host='opendata.cwa.gov.tw', port=443): Max retries exceeded with url: /api/v1/rest/datastore/O-A0002-001?Authorization=CWA-6C975A83-706E-4AA9-B49C-137294C4F587&format=JSON&StationId=C2O950 (Caused by ConnectTimeoutError(<HTTPSConnection(host='opendata.cwa.gov.tw', port=443) at 0x7f2820bdce80>, 'Connection to opendata.cwa.gov.tw timed out. (connect timeout=10)')) | 雷達亦失敗: HTTPSConnectionPool(host='opendata.cwa.gov.tw', port=443): Max retries exceeded with url: /fileapi/v1/opendataapi/O-A0058-001?Authorization=CWA-6C975A83-706E-4AA9-B49C-137294C4F587&format=JSON (Caused by ConnectTimeoutError(<HTTPSConnection(host='opendata.cwa.gov.tw', port=443) at 0x7f2820bdd780>, 'Connection to opendata.cwa.gov.tw timed out. (connect timeout=10)'))",
-  "execution_duration_sec": 31.34,
-  "github_run_id": "32099801907",
-  "total_runs": 148,
+  "error_message": "系統發生致命錯誤：系統異常：雨量計與雷達皆無法取得資料。詳細錯誤：氣象署雨量站連線失敗: HTTPSConnectionPool(host='opendata.cwa.gov.tw', port=443): Max retries exceeded with url: /api/v1/rest/datastore/O-A0002-001?Authorization=CWA-6C975A83-706E-4AA9-B49C-137294C4F587&format=JSON&StationId=C2O950 (Caused by ConnectTimeoutError(<HTTPSConnection(host='opendata.cwa.gov.tw', port=443) at 0x7ff6cede0e80>, 'Connection to opendata.cwa.gov.tw timed out. (connect timeout=10)')) | 雷達亦失敗: HTTPSConnectionPool(host='opendata.cwa.gov.tw', port=443): Max retries exceeded with url: /fileapi/v1/opendataapi/O-A0058-001?Authorization=CWA-6C975A83-706E-4AA9-B49C-137294C4F587&format=JSON (Caused by ConnectTimeoutError(<HTTPSConnection(host='opendata.cwa.gov.tw', port=443) at 0x7ff6cede1780>, 'Connection to opendata.cwa.gov.tw timed out. (connect timeout=10)'))",
+  "execution_duration_sec": 36.98,
+  "github_run_id": "32101646530",
+  "total_runs": 149,
   "successful_runs": 143,
-  "success_rate": "96.6%",
+  "success_rate": "96.0%",
   "last_success_time": "2026-08-18 10:07:22"
 }
