@@ -1,9 +1,9 @@
 {
-  "last_update": "2026-08-19 12:07:25",
+  "last_update": "2026-08-19 12:37:18",
   "is_covered": false,
   "rainfall": "0.0 mm",
-  "radar_pixels": 9,
-  "max_dbz": 15,
+  "radar_pixels": 0,
+  "max_dbz": 0,
   "weather_description": "多雲",
   "source": "中央氣象署 (安南站)",
   "reasons": [
@@ -14,11 +14,11 @@
   ],
   "system_status": "normal",
   "error_message": "",
-  "execution_duration_sec": 5.64,
-  "github_run_id": "32214573812",
-  "total_runs": 22,
-  "successful_runs": 22,
+  "execution_duration_sec": 7.5,
+  "github_run_id": "32216412479",
+  "total_runs": 23,
+  "successful_runs": 23,
   "success_rate": "100.0%",
-  "last_success_time": "2026-08-19 12:07:25",
+  "last_success_time": "2026-08-19 12:37:18",
   "last_rain_time": null
 }
