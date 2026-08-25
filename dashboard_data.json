@@ -1,7 +1,7 @@
 {
-  "last_update": "2026-08-25 10:07:17",
+  "last_update": "2026-08-25 10:37:23",
   "is_covered": true,
-  "rainfall": "1.5 mm",
+  "rainfall": "1.0 mm",
   "radar_pixels": 613,
   "max_dbz": 40,
   "weather_description": "陰有雨",
@@ -12,11 +12,11 @@
   ],
   "system_status": "normal",
   "error_message": "",
-  "execution_duration_sec": 8.12,
-  "github_run_id": "32800170074",
-  "total_runs": 115,
-  "successful_runs": 115,
+  "execution_duration_sec": 7.37,
+  "github_run_id": "32802085573",
+  "total_runs": 116,
+  "successful_runs": 116,
   "success_rate": "100.0%",
-  "last_success_time": "2026-08-25 10:07:17",
-  "last_rain_time": "2026-08-25 10:07:17"
+  "last_success_time": "2026-08-25 10:37:23",
+  "last_rain_time": "2026-08-25 10:37:23"
 }
