@@ -1,22 +1,21 @@
 {
-  "last_update": "2026-09-01 17:07:22",
+  "last_update": "2026-09-01 17:37:22",
   "is_covered": true,
-  "rainfall": "1.0 mm",
+  "rainfall": "未知",
   "radar_pixels": 613,
-  "max_dbz": 40,
-  "weather_description": "陰有雨",
-  "source": "中央氣象署 (安南站)",
+  "max_dbz": 45,
+  "weather_description": "讀取失敗",
+  "source": "雨量站異常，已切換雷達模式",
   "reasons": [
-    "☑ 測站有雨",
     "☑ 雷達回波達標 (613點)"
   ],
-  "system_status": "normal",
-  "error_message": "",
-  "execution_duration_sec": 68.93,
-  "github_run_id": "33490538012",
-  "total_runs": 249,
-  "successful_runs": 249,
+  "system_status": "warning",
+  "error_message": "氣象署雨量站連線失敗: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+  "execution_duration_sec": 108.44,
+  "github_run_id": "33493160206",
+  "total_runs": 250,
+  "successful_runs": 250,
   "success_rate": "100.0%",
-  "last_success_time": "2026-09-01 17:07:22",
-  "last_rain_time": "2026-09-01 17:07:22"
+  "last_success_time": "2026-09-01 17:37:22",
+  "last_rain_time": "2026-09-01 17:37:22"
 }
