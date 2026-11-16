@@ -1,5 +1,5 @@
 {
-  "last_update": "2026-11-16 17:07:22",
+  "last_update": "2026-11-16 17:37:32",
   "is_covered": false,
   "rainfall": "0.0 mm",
   "radar_pixels": 0,
@@ -14,11 +14,11 @@
   ],
   "system_status": "normal",
   "error_message": "",
-  "execution_duration_sec": 6.81,
-  "github_run_id": "43836875841",
-  "total_runs": 438,
-  "successful_runs": 438,
+  "execution_duration_sec": 2.99,
+  "github_run_id": "43841350164",
+  "total_runs": 439,
+  "successful_runs": 439,
   "success_rate": "100.0%",
-  "last_success_time": "2026-11-16 17:07:22",
+  "last_success_time": "2026-11-16 17:37:32",
   "last_rain_time": null
 }
