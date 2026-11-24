@@ -1,21 +1,22 @@
 {
-  "last_update": "2026-11-24 11:07:25",
+  "last_update": "2026-11-24 11:37:23",
   "is_covered": true,
   "rainfall": "0.0 mm",
-  "radar_pixels": 79,
+  "radar_pixels": 21,
   "max_dbz": 15,
   "weather_description": "陰",
   "source": "中央氣象署 (安南站)",
   "reasons": [
-    "☑ 雷達回波達標 (79點)"
+    "☒ 雷達回波仍有雲層接近",
+    "因此不滿足解除條件，維持加蓋"
   ],
   "system_status": "normal",
   "error_message": "",
-  "execution_duration_sec": 5.16,
-  "github_run_id": "45317234733",
-  "total_runs": 570,
-  "successful_runs": 570,
+  "execution_duration_sec": 7.63,
+  "github_run_id": "45320759850",
+  "total_runs": 571,
+  "successful_runs": 571,
   "success_rate": "100.0%",
-  "last_success_time": "2026-11-24 11:07:25",
+  "last_success_time": "2026-11-24 11:37:23",
   "last_rain_time": "2026-11-24 11:07:25"
 }
